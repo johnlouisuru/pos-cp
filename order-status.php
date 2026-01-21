@@ -1,0 +1,400 @@
+<?php
+// order-status.php
+require_once 'includes/db.php';
+
+$orderNumber = $_GET['order'] ?? '';
+$nickname = $_GET['nickname'] ?? '';
+$searchError = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $orderNumber = trim($_POST['order_number'] ?? '');
+    $nickname = trim($_POST['nickname'] ?? '');
+}
+
+// Search for order
+$order = null;
+$orderItems = [];
+
+if (!empty($orderNumber) || !empty($nickname)) {
+    try {
+        $sql = "SELECT 
+                    o.*,
+                    ods.display_name,
+                    ods.status as display_status,
+                    ods.estimated_time,
+                    TIMESTAMPDIFF(MINUTE, o.created_at, NOW()) as minutes_passed
+                FROM orders o
+                LEFT JOIN order_display_status ods ON o.id = ods.order_id
+                WHERE (o.order_number = ? OR ods.display_name = ?)
+                ORDER BY o.created_at DESC
+                LIMIT 1";
+        
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$orderNumber, $nickname]);
+        $order = $stmt->fetch();
+        
+        if ($order) {
+            // Get order items
+            $itemsSql = "
+                SELECT 
+                    p.name,
+                    oi.quantity,
+                    oi.unit_price,
+                    oi.total_price,
+                    oi.special_request,
+                    oi.status as item_status
+                FROM order_items oi
+                JOIN products p ON oi.product_id = p.id
+                WHERE oi.order_id = ?
+                ORDER BY oi.id
+            ";
+            
+            $itemsStmt = $pdo->prepare($itemsSql);
+            $itemsStmt->execute([$order['id']]);
+            $orderItems = $itemsStmt->fetchAll();
+        } else {
+            $searchError = "Order not found. Please check your order number or nickname.";
+        }
+        
+    } catch (Exception $e) {
+        $searchError = "Error searching for order: " . $e->getMessage();
+    }
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Track Your Order</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .order-tracker {
+            max-width: 800px;
+            margin: 2rem auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+        
+        .tracker-header {
+            background: linear-gradient(to right, #4a00e0, #8e2de2);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        
+        .tracker-body {
+            padding: 2rem;
+        }
+        
+        .status-timeline {
+            position: relative;
+            padding: 2rem 0;
+        }
+        
+        .status-step {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+        
+        .status-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            margin-right: 1rem;
+            z-index: 2;
+        }
+        
+        .status-icon.active {
+            background: #28a745;
+            color: white;
+        }
+        
+        .status-icon.inactive {
+            background: #e9ecef;
+            color: #6c757d;
+        }
+        
+        .status-icon.current {
+            background: #007bff;
+            color: white;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-content {
+            flex: 1;
+        }
+        
+        .status-line {
+            position: absolute;
+            left: 25px;
+            top: 50px;
+            bottom: -15px;
+            width: 2px;
+            background: #e9ecef;
+            z-index: 1;
+        }
+        
+        .status-step:last-child .status-line {
+            display: none;
+        }
+        
+        .order-items {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+        
+        .estimated-time {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 1rem;
+            border-radius: 5px;
+            margin: 1rem 0;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .qr-section {
+            text-align: center;
+            padding: 2rem;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-4">
+        <div class="order-tracker">
+            <!-- Header -->
+            <div class="tracker-header">
+                <h1><i class="fas fa-search-location"></i> Track Your Order</h1>
+                <p class="mb-0">Enter your order number or nickname to check status</p>
+            </div>
+            
+            <!-- Search Form -->
+            <div class="tracker-body">
+                <?php if (!$order): ?>
+                    <div class="search-form">
+                        <form method="POST" action="">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Order Number</label>
+                                    <input type="text" class="form-control form-control-lg" 
+                                           name="order_number" value="<?php echo htmlspecialchars($orderNumber); ?>"
+                                           placeholder="e.g., ONL-2026-001">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">OR Nickname</label>
+                                    <input type="text" class="form-control form-control-lg" 
+                                           name="nickname" value="<?php echo htmlspecialchars($nickname); ?>"
+                                           placeholder="e.g., Mike">
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <button type="submit" class="btn btn-primary btn-lg w-100">
+                                    <i class="fas fa-search"></i> Track Order
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <?php if ($searchError): ?>
+                            <div class="alert alert-danger mt-3">
+                                <i class="fas fa-exclamation-triangle"></i> <?php echo $searchError; ?>
+                            </div>
+                        <?php endif; ?>
+                        
+                        <!-- QR Code Info -->
+                        <div class="qr-section mt-4">
+                            <h4><i class="fas fa-qrcode"></i> Quick Access</h4>
+                            <p>Scan QR code at your table to track order instantly</p>
+                            <div id="qrcode"></div>
+                            <small class="text-muted">Point your camera at the QR code on your table</small>
+                        </div>
+                    </div>
+                <?php else: ?>
+                    <!-- Order Found - Show Status -->
+                    <div class="order-found">
+                        <div class="alert alert-success">
+                            <h4><i class="fas fa-check-circle"></i> Order Found!</h4>
+                            <p class="mb-0">
+                                Order: <strong><?php echo htmlspecialchars($order['order_number']); ?></strong>
+                                • Name: <strong><?php echo htmlspecialchars($order['display_name'] ?? $order['customer_nickname'] ?? 'Customer'); ?></strong>
+                                • Placed: <?php echo date('h:i A', strtotime($order['created_at'])); ?>
+                            </p>
+                        </div>
+                        
+                        <!-- Status Timeline -->
+                        <div class="status-timeline">
+                            <?php
+                            $statusSteps = [
+                                'pending' => ['icon' => 'fas fa-clock', 'label' => 'Order Received', 'description' => 'We have received your order'],
+                                'preparing' => ['icon' => 'fas fa-utensils', 'label' => 'Preparing', 'description' => 'Kitchen is preparing your food'],
+                                'ready' => ['icon' => 'fas fa-check-circle', 'label' => 'Ready', 'description' => 'Your order is ready for pickup'],
+                                'completed' => ['icon' => 'fas fa-box', 'label' => 'Completed', 'description' => 'Order has been served']
+                            ];
+                            
+                            $currentStatus = $order['display_status'] ?? $order['status'];
+                            $currentStep = array_search($currentStatus, array_keys($statusSteps));
+                            
+                            $stepIndex = 0;
+                            foreach ($statusSteps as $status => $step):
+                                $isActive = $stepIndex < $currentStep;
+                                $isCurrent = $stepIndex == $currentStep;
+                            ?>
+                                <div class="status-step">
+                                    <div class="status-icon <?php echo $isActive ? 'active' : ($isCurrent ? 'current' : 'inactive'); ?>">
+                                        <i class="<?php echo $step['icon']; ?>"></i>
+                                    </div>
+                                    <div class="status-content">
+                                        <h5 class="mb-1"><?php echo $step['label']; ?></h5>
+                                        <p class="text-muted mb-0"><?php echo $step['description']; ?></p>
+                                        <?php if ($isCurrent): ?>
+                                            <small class="text-primary">
+                                                <i class="fas fa-hourglass-half"></i>
+                                                Currently at this step
+                                            </small>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php if ($stepIndex < count($statusSteps) - 1): ?>
+                                        <div class="status-line"></div>
+                                    <?php endif; ?>
+                                </div>
+                            <?php 
+                                $stepIndex++;
+                            endforeach; 
+                            ?>
+                        </div>
+                        
+                        <!-- Order Details -->
+                        <div class="order-items">
+                            <h5><i class="fas fa-receipt"></i> Order Details</h5>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Item</th>
+                                        <th>Qty</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($orderItems as $item): ?>
+                                        <tr>
+                                            <td>
+                                                <?php echo htmlspecialchars($item['name']); ?>
+                                                <?php if ($item['special_request']): ?>
+                                                    <br><small class="text-muted"><?php echo htmlspecialchars($item['special_request']); ?></small>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td><?php echo $item['quantity']; ?></td>
+                                            <td>
+                                                <span class="badge 
+                                                    <?php 
+                                                        if ($item['item_status'] == 'pending') echo 'bg-warning';
+                                                        elseif ($item['item_status'] == 'preparing') echo 'bg-info';
+                                                        elseif ($item['item_status'] == 'ready') echo 'bg-success';
+                                                        else echo 'bg-secondary';
+                                                    ?>">
+                                                    <?php echo ucfirst($item['item_status']); ?>
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <th colspan="2" class="text-end">Total:</th>
+                                        <th>₱<?php echo number_format($order['total_amount'], 2); ?></th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                        
+                        <!-- Estimated Time -->
+                        <?php if ($order['estimated_time']): ?>
+                            <div class="estimated-time">
+                                <h6><i class="fas fa-hourglass-half"></i> Estimated Preparation Time</h6>
+                                <p class="mb-0">
+                                    Your order will be ready in approximately 
+                                    <strong><?php echo $order['estimated_time']; ?> minutes</strong>
+                                    <?php if ($order['minutes_passed']): ?>
+                                        (<?php echo max(0, $order['estimated_time'] - $order['minutes_passed']); ?> minutes remaining)
+                                    <?php endif; ?>
+                                </p>
+                            </div>
+                        <?php endif; ?>
+                        
+                        <!-- Auto-refresh notice -->
+                        <div class="alert alert-info mt-3">
+                            <i class="fas fa-sync-alt"></i>
+                            This page auto-refreshes every 30 seconds. Last updated: 
+                            <span id="last-updated"><?php echo date('h:i:s A'); ?></span>
+                        </div>
+                        
+                        <!-- Actions -->
+                        <div class="text-center mt-4">
+                            <a href="order-status.php" class="btn btn-outline-primary">
+                                <i class="fas fa-search"></i> Track Another Order
+                            </a>
+                            <!-- <a href="#" target="_blank" class="btn btn-outline-secondary">
+                                <i class="fas fa-tv"></i> View All Processing Orders
+                            </a> -->
+                            <button onclick="window.print()" class="btn btn-outline-success">
+                                <i class="fas fa-print"></i> Print Receipt
+                            </button>
+                        </div>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        <?php if ($order): ?>
+        // Auto-refresh for order status page
+        setTimeout(() => location.reload(), 30000);
+        
+        // Update last updated time
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('last-updated').textContent = 
+                now.toLocaleTimeString('en-US', { hour12: true });
+        }, 1000);
+        <?php endif; ?>
+        
+        // Generate QR code for current page
+        function generateQRCode() {
+            const currentUrl = window.location.href.split('?')[0];
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(currentUrl)}`;
+            $('#qrcode').html(`<img src="${qrUrl}" alt="QR Code" class="img-fluid">`);
+        }
+        
+        $(document).ready(function() {
+            generateQRCode();
+        });
+    </script>
+</body>
+</html>
