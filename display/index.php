@@ -24,6 +24,7 @@ $orders = getProcessingOrders($maxItems);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($settings['display_title'] ?? 'Processing Orders'); ?></title>
+    <link rel="icon" type="image/png" href="../uploads/samara.jpg">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/display.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -44,10 +45,10 @@ $orders = getProcessingOrders($maxItems);
     <header class="display-header">
         <div class="container">
             <div class="row align-items-center">
-                <div class="col-md-8">
+                <div class="col-md-6">
                     <h1 class="display-title">
-                        <i class="fas fa-bell"></i>
-                        <?php echo htmlspecialchars($settings['display_title'] ?? '🛎️ Processing Orders'); ?>
+                        <img src="../uploads/samara.jpg" height="50px" width="50px" alt="Icon" class="header-icon">
+                        <?php echo htmlspecialchars($settings['display_title'] ?? 'Processing Orders'); ?>
                     </h1>
                     <div class="display-subtitle">
                         <span id="current-time"></span>
@@ -57,8 +58,11 @@ $orders = getProcessingOrders($maxItems);
                         <span id="last-updated">Updated: Just now</span>
                     </div>
                 </div>
-                <div class="col-md-4 text-end">
+                <div class="col-md-6 text-end">
                     <div class="display-controls">
+                    <a class="btn btn-sm btn-info" href="../admin/pos.php">
+                                <i class="fas fa-list"></i> Cashier Menu
+                            </a>
                         <button class="btn btn-sm btn-outline-light" onclick="refreshDisplay()">
                             <i class="fas fa-sync-alt"></i> Refresh
                         </button>

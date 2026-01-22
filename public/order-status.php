@@ -6,7 +6,8 @@ $orderNumber = $_GET['order'] ?? '';
 $pin = $_GET['pin'] ?? '';
 $nickname = $_GET['nickname'] ?? '';
 $searchError = '';
-$orderNumberFromOnline = '';
+$orderNumberFromOnline = null;
+$message = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $orderNumber = trim($_POST['order_number'] ?? '');
@@ -15,19 +16,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if(!empty($pin)) {
-    $get_onumber_from_online_orders = "
-                SELECT 
-                    order_number
-                FROM online_orders
-                WHERE tracking_pin = ?
-                LIMIT 1
-            ";
-            $itemsStmt = $pdo->prepare($get_onumber_from_online_orders);
-            $itemsStmt->execute([$pin]);
-            $onlineOrders = $itemsStmt->fetch();
-            $orderNumberFromOnline = $onlineOrders['order_number'];
+        $get_onumber_from_online_orders = "
+        SELECT order_number
+        FROM online_orders
+        WHERE tracking_pin = ?
+        LIMIT 1
+        ";
+
+        $stmt = $pdo->prepare($get_onumber_from_online_orders);
+        $stmt->execute([$pin]);
+        $result = $stmt->fetch();
+
+        if ($result) {
+            $orderNumberFromOnline = $result['order_number'];
+        } else {
+            // Handle case where PIN is not found
+            $orderNumberFromOnline = null;
+            // or throw an error, redirect, etc.
+        }
 } else {
-    $trackingPin = '';
+    $pin = '';
 }
 
 // Search for order
@@ -79,13 +87,17 @@ if (!empty($orderNumber) || !empty($nickname) || !empty($orderNumberFromOnline))
         $searchError = "Error searching for order: " . $e->getMessage();
     }
 }
+else {
+$message = "Please enter an order number, PIN, or nickname to track your order.";
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Track Your Order</title>
+    <link rel="icon" type="image/png" href="../uploads/samara.jpg">
+    <title>SAMARA'S CAFFEINATED DREAMS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -214,6 +226,11 @@ if (!empty($orderNumber) || !empty($nickname) || !empty($orderNumberFromOnline))
             
             <!-- Search Form -->
             <div class="tracker-body">
+            <?php 
+            if(!empty($message)) {
+                echo '<div class="alert alert-info"><i class="fas fa-info-circle"></i> ' . htmlspecialchars($message) . '</div>';
+            }
+            ?>
                 <?php if (!$order): ?>
                     <div class="search-form">
                         <form method="POST" action="">
@@ -235,6 +252,10 @@ if (!empty($orderNumber) || !empty($nickname) || !empty($orderNumberFromOnline))
                                 <button type="submit" class="btn btn-primary btn-lg w-100">
                                     <i class="fas fa-search"></i> Track Order
                                 </button>
+                                <hr />
+                                <a href="menu.php" class="btn btn-secondary btn-lg w-100">
+                                    <i class="fas fa-list"></i> Back to Menu
+                                </a>
                             </div>
                         </form>
                         

@@ -135,6 +135,11 @@ $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </a>
             <div class="collapse navbar-collapse">
                 <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                        <a class="nav-link" href="dashboard.php">
+                            <i class="fas fa-home me-1"></i> Dashboard
+                        </a>
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link" href="products.php">
                             <i class="fas fa-box me-1"></i> Products

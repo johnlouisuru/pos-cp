@@ -1,7 +1,7 @@
 <?php
 require_once '../config/database.php';
 
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
+if (!isset($_SESSION['user_id']) || ($_SESSION['role'] !== 'admin' && $_SESSION['role'] !== 'cashier')) {
     header('Location: login.php');
     exit();
 }
@@ -23,7 +23,8 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POS System - Admin</title>
+    <title>SAMARA'S CAFFEINATED DREAMS</title>
+    <link rel="icon" type="image/png" href="../uploads/samara.jpg">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
@@ -704,6 +705,7 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         gap: 5px;
         cursor: pointer;
         transition: all 0.2s;
+        text-decoration: none;
     }
     
     .mobile-btn:hover {
@@ -863,7 +865,8 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         <!-- Header -->
         <header class="pos-header">
             <div class="header-left">
-                <h3><i class="fas fa-cash-register me-2"></i> POS</h3>
+            <img src="../uploads/samara.jpg" height="30px" width="30px" alt="Icon" class="header-icon me-2">
+                <!-- <h3><i class="fas fa-cash-register me-2"></i> POS</h3> -->
             </div>
             <div class="header-right">
                 <div class="user-info">
@@ -982,10 +985,10 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             <span>Cart</span>
             <span class="cart-badge" id="cart-count">0</span>
         </button>
-        <button class="mobile-btn" id="mobile-checkout-btn">
-            <i class="fas fa-check"></i>
-            <span>Checkout</span>
-        </button>
+        <a class="mobile-btn" href="../display" id="mobile-checkout-btn">
+            <i class="fas fa-bell"></i>
+            <span>Orders</span>
+        </a>
     </div>
     
     <!-- Toast Container -->

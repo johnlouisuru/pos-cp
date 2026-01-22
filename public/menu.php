@@ -100,7 +100,8 @@ if (!empty($_SESSION['cart'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🍽️ Order Online</title>
+     <link rel="icon" type="image/png" href="../uploads/samara.jpg">
+    <title>SAMARA'S CAFFEINATED DREAMS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/online-menu.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -194,8 +195,9 @@ if (!empty($_SESSION['cart'])) {
             <div class="row align-items-center">
                 <div class="col-6">
                     <div class="logo">
-                        <i class="fas fa-utensils"></i>
-                        <span>URU Food Hub</span>
+                        <!-- <i class="fas fa-utensils"></i> -->
+                        <img src="../uploads/samara.jpg" height="30px" width="30px" alt="Icon" class="header-icon">
+                        <span>SAMARA</span>
                     </div>
                 </div>
                 <div class="col-6 text-end">
