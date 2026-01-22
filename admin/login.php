@@ -102,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="col-md-5">
                 <div class="login-card">
                     <div class="login-header">
-                        <h3>POS Admin Login</h3>
+                        <h3><img src="../uploads/samara.jpg" height="30px" width="30px" alt="Icon" class="header-icon me-2">Samara's Admin Page</h3>
                         <p class="text-muted">Enter your credentials to access the system</p>
                     </div>
                     <div class="login-body">
@@ -122,11 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <button type="submit" class="btn btn-login">Login</button>
                         </form>
                         
-                        <div class="mt-3 text-center">
-                            <p class="text-muted">Demo Credentials:</p>
-                            <p><strong>Admin:</strong> admin / admin123</p>
-                            <p><strong>Cashier:</strong> cashier1 / admin123</p>
-                        </div>
+                        
                     </div>
                 </div>
             </div>
