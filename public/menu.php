@@ -108,130 +108,330 @@ if (!empty($_SESSION['cart'])) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
 
     <style>
-        /* Force bottom action bar to show on all devices */
-.bottom-action-bar {
-    display: block !important;
-    position: fixed !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    background: #fff !important;
-    box-shadow: 0 -2px 10px rgba(0,0,0,0.1) !important;
-    z-index: 1050 !important;
-    padding: 10px !important;
-}
-
-.action-buttons {
-    display: flex !important;
-    gap: 10px;
-    justify-content: space-around;
-    max-width: 1200px;
-    margin: 0 auto;
-}
-
-.action-btn {
-    flex: 1;
-    padding: 12px 15px;
-    border: none;
-    border-radius: 8px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s;
-    display: flex !important;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-    font-size: 0.9rem;
-}
-
-.action-btn i {
-    font-size: 1.3rem;
-}
-
-.view-cart-btn {
-    background: #6c757d;
-    color: white;
-}
-
-.track-order-btn {
-    background: #17a2b8;
-    color: white;
-}
-
-.checkout-btn {
-    background: #28a745;
-    color: white;
-}
-
-.checkout-btn:disabled {
-    background: #6c757d;
-    opacity: 0.5;
-}
-
-/* Add padding to prevent content from being hidden */
-.products-container {
-    padding-bottom: 100px !important;
-}
-
-/* Desktop responsive */
-@media (min-width: 768px) {
-    .action-btn {
-        flex-direction: row !important;
-        justify-content: center;
-        padding: 15px 25px;
-        gap: 10px;
-    }
-    
-    .action-btn span {
-        font-size: 1rem;
-    }
-}
-
-.category-title {
-        font-size: 2rem;
-        font-weight: bold;
-        /* Apply gradient as background */
-        /* background: linear-gradient(90deg, #ff7e5f, #feb47b); */
-        background-color: #6c757d;
-        background: radial-gradient(circle, #ff7e5f, #feb47b);
-        -webkit-background-clip: text; /* For Safari/Chrome */
-        background-clip: text;
-        color: transparent; /* Make text transparent so gradient shows */
+    /* Entire page gradient background */
+    body {
+        background: linear-gradient(135deg, #f8f4e9 0%, #e6dfd3 100%);
+        min-height: 100vh;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
 
-    /* Adjust product card spacing for 2-column layout */
-@media (min-width: 768px) {
+    /* Header with glass effect */
+    .online-header {
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(10px);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    /* Category navigation */
+    .category-nav {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(10px);
+        box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Product cards with glass effect */
     .product-card {
-        height: 100%;
-        display: flex;
-        flex-direction: column;
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(10px);
+        border-radius: 15px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        overflow: hidden;
     }
-    
-    .product-body {
-        flex-grow: 1;
-        display: flex;
-        flex-direction: column;
+
+    .product-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
     }
-    
-    .product-actions {
-        margin-top: auto;
-    }
-    
+
     .product-image {
-        height: 180px;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        border-radius: 12px 12px 0 0;
+    }
+
+    /* Cart sidebar */
+    .cart-sidebar {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(15px);
+        border-left: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    /* Bottom action bar */
+    .bottom-action-bar {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(15px);
+        border-top: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    /* Modal backdrop */
+    .modal-backdrop {
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(5px);
+    }
+
+    /* Addons modal */
+    .addons-modal {
+        background: rgba(0, 0, 0, 0.5);
+    }
+
+    .addons-content {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    /* Category title with gradient */
+    .category-title {
+        background: linear-gradient(90deg, #8B4513, #D2691E);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        padding: 10px 0;
+    }
+
+    /* Force bottom action bar to show on all devices */
+    .bottom-action-bar {
+        display: block !important;
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        z-index: 1050 !important;
+        padding: 10px !important;
+    }
+
+    .action-buttons {
+        display: flex !important;
+        gap: 10px;
+        justify-content: space-around;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .action-btn {
+        flex: 1;
+        padding: 12px 15px;
+        border: none;
+        border-radius: 10px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex !important;
+        flex-direction: column;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.9rem;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .action-btn i {
+        font-size: 1.3rem;
+    }
+
+    .view-cart-btn {
+        background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+        color: white;
+    }
+
+    .track-order-btn {
+        background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+        color: white;
+    }
+
+    .checkout-btn {
+        background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+        color: white;
+    }
+
+    .checkout-btn:disabled {
+        background: #6c757d;
+        opacity: 0.5;
+    }
+
+    /* Add padding to prevent content from being hidden */
+    .products-container {
+        padding-bottom: 100px !important;
+    }
+
+    /* Desktop responsive */
+    @media (min-width: 768px) {
+        .action-btn {
+            flex-direction: row !important;
+            justify-content: center;
+            padding: 15px 25px;
+            gap: 10px;
+        }
+        
+        .action-btn span {
+            font-size: 1rem;
+        }
+    }
+
+    /* Fix quantity control visibility */
+    .product-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 10px;
+    }
+
+    .quantity-control {
+        display: flex;
+        align-items: center;
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 5px;
+        min-width: 100px;
+        flex-shrink: 0;
+        border: 1px solid #e9ecef;
+    }
+
+    .qty-btn {
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+        color: white;
+        border-radius: 6px;
         display: flex;
         align-items: center;
         justify-content: center;
-        overflow: hidden;
+        cursor: pointer;
+        transition: all 0.2s;
     }
-    
-    .product-image img {
-        max-height: 100%;
-        width: auto;
-        object-fit: cover;
+
+    .qty-btn:hover {
+        background: linear-gradient(135deg, #5a6268 0%, #495056 100%);
     }
-}
-    </style>
+
+    .qty-display {
+        min-width: 30px;
+        text-align: center;
+        font-weight: bold;
+        font-size: 1rem;
+    }
+
+    .add-to-cart-btn {
+        flex: 1;
+        padding: 10px;
+        background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font-size: 0.9rem;
+        min-height: 42px;
+        transition: all 0.2s;
+    }
+
+    .add-to-cart-btn:hover {
+        background: linear-gradient(135deg, #218838 0%, #1e7e34 100%);
+    }
+
+    .add-to-cart-btn:disabled {
+        background: #6c757d;
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* Smaller cart icon in Add button */
+    .add-to-cart-btn i {
+        font-size: 0.9rem !important;
+    }
+
+    /* For customize & add button */
+    .add-to-cart-btn.w-100 i {
+        font-size: 0.9rem !important;
+    }
+
+    /* Mobile adjustments */
+    @media (max-width: 767px) {
+        .row.p-4 {
+            padding: 1rem !important;
+        }
+        
+        .col-6.mb-4 {
+            margin-bottom: 1rem !important;
+        }
+        
+        .product-card {
+            padding: 0.75rem;
+        }
+        
+        .product-title {
+            font-size: 1rem;
+        }
+        
+        .product-price {
+            font-size: 1.1rem;
+        }
+        
+        .product-actions {
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .quantity-control {
+            width: 100%;
+            justify-content: center;
+            min-width: 0;
+        }
+        
+        .add-to-cart-btn {
+            width: 100%;
+        }
+        
+        /* Even smaller buttons on very small screens */
+        .qty-btn {
+            width: 28px;
+            height: 28px;
+        }
+        
+        .qty-display {
+            min-width: 25px;
+            font-size: 0.9rem;
+        }
+        
+        /* Smaller cart icon on mobile */
+        .add-to-cart-btn i {
+            font-size: 0.8rem !important;
+        }
+    }
+
+    /* Desktop adjustments */
+    @media (min-width: 768px) {
+        .product-actions {
+            flex-direction: row;
+        }
+        
+        .product-image {
+            height: 180px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        
+        .product-image img {
+            max-height: 100%;
+            width: auto;
+            object-fit: cover;
+        }
+    }
+</style>
 </head>
 <body>
     <!-- Header -->
@@ -242,11 +442,11 @@ if (!empty($_SESSION['cart'])) {
                     <div class="logo">
                         <!-- <i class="fas fa-utensils"></i> -->
                         <img src="../uploads/samara.jpg" height="30px" width="30px" alt="Icon" class="header-icon">
-                        <span>SAMARA</span>
+                        <span style="color:#3d2d31">SAMARA</span>
                     </div>
                 </div>
-                <div class="col-6 text-end">
-                    <div class="cart-summary" onclick="toggleCart()">
+                <div class="col-6 text-end text-dark">
+                    <div class="cart-summary alert alert-info" onclick="toggleCart()">
                         <i class="fas fa-shopping-cart"></i>
                         <span id="cart-count"><?php echo $cartCount; ?></span> items
                         <span class="ms-2">₱<span id="cart-total"><?php echo number_format($cartTotal, 2); ?></span></span>
@@ -576,7 +776,7 @@ if (!empty($_SESSION['cart'])) {
                 // Update the add to cart button text
                 const addBtn = element.closest('.product-actions')?.querySelector('.add-to-cart-btn');
                 if (addBtn && quantity > 0) {
-                    addBtn.innerHTML = `<i class="fas fa-cart-plus"></i> Add ${quantity}`;
+                    addBtn.innerHTML = `<i class="fas fa-cart-plus"></i>Add ${quantity}`;
                 }
             }
         }
