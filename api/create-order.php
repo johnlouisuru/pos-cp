@@ -182,6 +182,6 @@ function getTaxRate() {
     $stmt = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'tax_rate'");
     $result = $stmt->fetch();
     
-    return floatval($result['setting_value'] ?? 0.12);
+    return floatval($result['setting_value'] ?? 0);
 }
 ?>

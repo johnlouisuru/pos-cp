@@ -1071,26 +1071,71 @@ function getProduct() {
                 searchPlaceholder: "Search products..."
             },
             columnDefs: [
-                { orderable: false, targets: [0, 7] }
+                { 
+                    orderable: false, 
+                    targets: [0, 7] // Image and Actions columns
+                },
+                // Make columns searchable without HTML tags
+                { 
+                    targets: [2], // Category column
+                    render: function(data, type, row) {
+                        if (type === 'sort' || type === 'filter') {
+                            return data.replace(/<[^>]*>/g, ''); // Strip HTML
+                        }
+                        return data;
+                    }
+                },
+                { 
+                    targets: [4], // Stock column
+                    render: function(data, type, row) {
+                        if (type === 'sort' || type === 'filter') {
+                            // Extract stock status from the span class
+                            if (data.includes('stock-out')) return 'out';
+                            if (data.includes('stock-low')) return 'low';
+                            if (data.includes('stock-in')) return 'in';
+                        }
+                        return data;
+                    }
+                },
+                { 
+                    targets: [5], // Status column
+                    render: function(data, type, row) {
+                        if (type === 'sort' || type === 'filter') {
+                            // Extract availability status
+                            if (data.includes('bg-success')) return '1'; // Available
+                            if (data.includes('bg-danger')) return '0'; // Unavailable
+                        }
+                        return data;
+                    }
+                }
             ]
         });
         
-        // Category filter
+        // Category filter - search in column 2
         $('#filterCategory').on('change', function() {
-            table.column(2).search(this.value).draw();
+            const selectedValue = $(this).val();
+            if (selectedValue === '') {
+                table.column(2).search('').draw();
+            } else {
+                // Find category name from dropdown option
+                const categoryName = $(this).find('option:selected').text();
+                table.column(2).search('^' + categoryName + '$', true, false).draw();
+            }
         });
         
-        // Status filter
+        // Status filter - custom filter for availability
         $('#filterStatus').on('change', function() {
-            table.column(5).search(this.value).draw();
+            const selectedValue = $(this).val();
+            table.column(5).search(selectedValue).draw();
         });
         
-        // Stock filter
+        // Stock filter - custom filter for stock levels
         $('#filterStock').on('change', function() {
-            table.column(4).search(this.value).draw();
+            const selectedValue = $(this).val();
+            table.column(4).search(selectedValue).draw();
         });
         
-        // Search input
+        // Search input - search all columns
         $('#searchProduct').on('keyup', function() {
             table.search(this.value).draw();
         });

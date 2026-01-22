@@ -16,22 +16,23 @@ if (!$orderId || !$status) {
     exit;
 }
 
-// Validate status
-$validStatuses = ['preparing', 'ready', 'completed'];
+// Validate status - ADD 'confirmed' to valid statuses
+$validStatuses = ['confirmed', 'preparing', 'ready', 'completed'];
 if (!in_array($status, $validStatuses)) {
-    echo json_encode(['success' => false, 'message' => 'Invalid status']);
+    echo json_encode(['success' => false, 'message' => 'Invalid status: ' . $status]);
     exit;
 }
 
 try {
-    // Map display status to order status
+    // Map display status to order status - UPDATE with all statuses
     $statusMap = [
+        'confirmed' => 'confirmed',
         'preparing' => 'preparing',
         'ready' => 'ready',
         'completed' => 'completed'
     ];
     
-    $orderStatus = $statusMap[$status] ?? 'preparing';
+    $orderStatus = $statusMap[$status] ?? 'confirmed';
     
     // Update main order status
     $sql = "UPDATE orders SET status = ? WHERE id = ?";
@@ -43,24 +44,41 @@ try {
     $stmt2 = $pdo->prepare($sql2);
     $stmt2->execute([$status, $orderId]);
     
+    // Also update all order items status based on order status
+    $itemStatusMap = [
+        'confirmed' => 'pending',
+        'preparing' => 'preparing',
+        'ready' => 'ready',
+        'completed' => 'ready' // Items marked as ready when order completed
+    ];
+    
+    $itemStatus = $itemStatusMap[$status] ?? 'pending';
+    $sql3 = "UPDATE order_items SET status = ? WHERE order_id = ?";
+    $stmt3 = $pdo->prepare($sql3);
+    $stmt3->execute([$itemStatus, $orderId]);
+    
     // If marking as completed, update display_until
     if ($status === 'completed') {
-        $sql3 = "UPDATE order_display_status SET display_until = NOW() WHERE order_id = ?";
-        $stmt3 = $pdo->prepare($sql3);
-        $stmt3->execute([$orderId]);
-        
-        // Also update all order items to 'ready'
-        $sql4 = "UPDATE order_items SET status = 'ready' WHERE order_id = ?";
+        $sql4 = "UPDATE order_display_status SET display_until = NOW() WHERE order_id = ?";
         $stmt4 = $pdo->prepare($sql4);
         $stmt4->execute([$orderId]);
     }
     
+    // Log the status change
+    $sql5 = "INSERT INTO status_change_logs (order_id, old_status, new_status, notes) 
+             SELECT ?, o.status, ?, 'Status updated from display' 
+             FROM orders o WHERE o.id = ?";
+    $stmt5 = $pdo->prepare($sql5);
+    $stmt5->execute([$orderId, $orderStatus, $orderId]);
+    
     echo json_encode([
         'success' => true, 
-        'message' => 'Status updated successfully'
+        'message' => 'Status updated successfully',
+        'new_status' => $status
     ]);
     
 } catch (Exception $e) {
+    error_log("Status update error: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
 ?>

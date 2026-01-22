@@ -1054,7 +1054,7 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         </div>
     </div>
 
-    <!-- Addon Selection Modal -->
+<!-- Addon Selection Modal -->
 <div class="modal fade" id="addonModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -1078,6 +1078,8 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         </div>
     </div>
 </div>
+
+
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -1209,9 +1211,22 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 url += (url.includes('?') ? '&' : '?') + `search=${encodeURIComponent(search)}`;
             }
             
+            console.log("Loading products from:", url);
+            
             fetch(url)
                 .then(response => response.json())
                 .then(data => {
+                    console.log("Products loaded:", data);
+                    
+                    // Find Brown Sugar 16oz
+                    const brownSugar = data.find(p => p.id == 13);
+                    if (brownSugar) {
+                        console.log("Brown Sugar 16oz details:", brownSugar);
+                        console.log("has_addons value:", brownSugar.has_addons);
+                        console.log("has_addons type:", typeof brownSugar.has_addons);
+                        console.log("parseInt(has_addons):", parseInt(brownSugar.has_addons));
+                    }
+                    
                     productsContainer.innerHTML = '';
                     
                     if (data.length === 0) {
@@ -1224,19 +1239,26 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                         return;
                     }
                     
+                    // Rest of your code...
+                    
                     // In loadProducts() function
 data.forEach(product => {
+    console.log("Creating card for product:", product.name, "has_addons:", product.has_addons);
+    
     const card = document.createElement('div');
     card.className = `product-card ${product.stock <= 0 ? 'out-of-stock' : ''}`;
-    if (product.has_addons) {
-        card.setAttribute('data-has-addons', 'true');
-        card.style.position = 'relative';
-    }
+    
+    
     card.onclick = () => {
+        console.log("Product clicked:", product.name);
         if (product.stock > 0) {
             addToCart(product);
+        } else {
+            console.log("Product out of stock");
         }
     };
+    
+    // Rest of your code...
     
     let stockClass = '';
     let stockText = '';
@@ -1253,17 +1275,16 @@ data.forEach(product => {
     card.innerHTML = `
         <div class="product-name">${product.name}</div>
         <div class="product-price">₱${parseFloat(product.price).toFixed(2)}</div>
-        ${product.has_addons ? '<div class="text-info small"><i class="fas fa-plus-circle"></i> Addons available</div>' : ''}
         <div class="product-stock ${stockClass}">${stockText}</div>
     `;
     
     productsContainer.appendChild(card);
 });
-                })
-                .catch(error => {
-                    console.error('Error loading products:', error);
-                    showToast('Error loading products', 'error');
-                });
+    })
+    .catch(error => {
+        console.error('Error loading products:', error);
+        showToast('Error loading products', 'error');
+    });
         }
         
         function setupEventListeners() {
@@ -1325,17 +1346,32 @@ data.forEach(product => {
         }
         
         function addToCart(product) {
-            // Check if product has addons
-            if (product.has_addons) {
-                showAddonModal(product);
-            } else {
-                addProductToCart(product);
-            }
+            console.log("addToCart called for:", product.name);
+            
+            // Always check if this product has addons (global or specific)
+            fetch(`../api/get-addons.php?product_id=${product.id}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.addons && data.addons.length > 0) {
+                        console.log(`Found ${data.addons.length} addons for ${product.name}`);
+                        showAddonModal(product);
+                    } else {
+                        console.log(`No addons found for ${product.name}`);
+                        addProductToCart(product);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking addons:', error);
+                    // If error, add without addons
+                    addProductToCart(product);
+                });
         }
 
-        function addProductToCart(product, addons = [], specialRequest = '') {
+       function addProductToCart(product, addons = [], specialRequest = '') {
+            // Calculate addon total
+            const addonTotal = addons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0);
+            
             // Check if this exact combination already exists in cart
-            // (same product + same addons + same special request)
             const existingItemIndex = findExistingCartItem(product.id, addons, specialRequest);
             
             if (existingItemIndex !== -1) {
@@ -1356,13 +1392,16 @@ data.forEach(product => {
                     price: parseFloat(product.price),
                     quantity: 1,
                     stock: product.stock,
+                    has_addons: parseInt(product.has_addons) === 1,
                     addons: addons,
-                    special_request: specialRequest || null,
-                    addon_total: addons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0)
+                    addon_total: addonTotal,
+                    special_request: specialRequest || null
                 });
                 updateCartDisplay();
                 showToast(`${product.name} added to cart${addons.length > 0 ? ' with addons' : ''}`, 'success');
             }
+            
+            updateCartCount();
         }
 
         function findExistingCartItem(productId, addons, specialRequest) {
@@ -1387,86 +1426,27 @@ data.forEach(product => {
 
 let currentProductForAddons = null;
 
-function showAddonModal(product) {
-    currentProductForAddons = product;
-    
-    document.getElementById('addonProductName').textContent = product.name;
-    document.getElementById('specialRequest').value = '';
-    
-    // Load addons for this product
-    fetch(`../api/get-addons.php?product_id=${product.id}`)
-        .then(response => response.json())
-        .then(data => {
-            const addonList = document.getElementById('addonList');
-            
-            if (data.success && data.addons && data.addons.length > 0) {
-                let html = '<h6 class="mb-3">Available Addons:</h6>';
-                
-                data.addons.forEach(addon => {
-                    html += `
-                        <div class="col-md-6 mb-3">
-                            <div class="card addon-card" data-addon-id="${addon.id}">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-start">
-                                        <div>
-                                            <h6 class="mb-1">${escapeHtml(addon.name)}</h6>
-                                            <p class="text-muted mb-1" style="font-size: 0.9em;">${escapeHtml(addon.description || '')}</p>
-                                            <strong class="text-success">+₱${parseFloat(addon.price).toFixed(2)}</strong>
-                                        </div>
-                                        <div class="addon-quantity">
-                                            <div class="input-group input-group-sm" style="width: 120px;">
-                                                <button class="btn btn-outline-secondary" type="button" onclick="updateAddonQuantity('${addon.id}', -1)">-</button>
-                                                <input type="text" class="form-control text-center" id="addon_qty_${addon.id}" value="0" readonly>
-                                                <button class="btn btn-outline-secondary" type="button" onclick="updateAddonQuantity('${addon.id}', 1)">+</button>
-                                            </div>
-                                            <small class="text-muted d-block mt-1">Max: ${addon.max_quantity || 1}</small>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                });
-                
-                addonList.innerHTML = html;
-            } else {
-                addonList.innerHTML = `
-                    <div class="text-center py-4">
-                        <i class="fas fa-plus-circle fa-3x text-muted mb-3"></i>
-                        <p class="text-muted">No addons available for this product</p>
-                        <button class="btn btn-sm btn-primary mt-2" onclick="addProductToCart(currentProductForAddons, [])">
-                            Add without addons
-                        </button>
-                    </div>
-                `;
-            }
-        })
-        .catch(error => {
-            console.error('Error loading addons:', error);
-            document.getElementById('addonList').innerHTML = `
-                <div class="text-center py-4">
-                    <p class="text-danger">Error loading addons</p>
-                    <button class="btn btn-sm btn-primary mt-2" onclick="addProductToCart(currentProductForAddons, [])">
-                        Add without addons
-                    </button>
-                </div>
-            `;
-        });
-    
-    const modal = new bootstrap.Modal(document.getElementById('addonModal'));
-    modal.show();
-}
 
-function updateAddonQuantity(addonId, change) {
+function updateAddonQuantity(addonId, change, maxQty) {
     const input = document.getElementById(`addon_qty_${addonId}`);
     let currentQty = parseInt(input.value) || 0;
     let newQty = currentQty + change;
     
-    // Get max quantity from the parent element
-    const maxQty = parseInt(input.closest('.addon-quantity').querySelector('small').textContent.replace('Max: ', '')) || 1;
-    
     if (newQty >= 0 && newQty <= maxQty) {
         input.value = newQty;
+        
+        // Add visual feedback
+        if (change > 0) {
+            input.style.backgroundColor = '#e8f5e8';
+            setTimeout(() => {
+                input.style.backgroundColor = '';
+            }, 200);
+        } else {
+            input.style.backgroundColor = '#fff3cd';
+            setTimeout(() => {
+                input.style.backgroundColor = '';
+            }, 200);
+        }
     }
 }
 
@@ -1484,9 +1464,11 @@ function addProductWithAddons() {
         if (quantity > 0) {
             // Get addon details from DOM
             const card = input.closest('.addon-card');
-            const addonName = card.querySelector('h6').textContent;
-            const priceText = card.querySelector('.text-success').textContent;
-            const price = parseFloat(priceText.replace('+₱', ''));
+            if (!card) return;
+            
+            const addonName = card.querySelector('h6')?.textContent || `Addon ${addonId}`;
+            const priceText = card.querySelector('.text-success')?.textContent;
+            const price = priceText ? parseFloat(priceText.replace('+₱', '')) : 0;
             
             addons.push({
                 addon_id: parseInt(addonId),
@@ -1501,7 +1483,7 @@ function addProductWithAddons() {
     
     const specialRequest = document.getElementById('specialRequest').value.trim();
     
-    // Add to cart using the new function
+    // Add to cart
     addProductToCart(currentProductForAddons, addons, specialRequest);
     
     // Close modal
@@ -1708,86 +1690,6 @@ function updateOrderSummary() {
             }
         }
         
-        function showCheckoutModal() {
-            if (cart.length === 0) {
-                showToast('Cart is empty', 'warning');
-                return;
-            }
-            
-            const modal = new bootstrap.Modal(document.getElementById('checkoutModal'));
-            
-            // Update modal summary
-            let summaryHtml = '';
-            let subtotal = 0;
-            
-            cart.forEach((item, index) => {
-                // Calculate item total including addons
-                let itemBasePrice = item.price;
-                let itemAddonTotal = 0;
-                let addonsHtml = '';
-                
-                if (item.addons && item.addons.length > 0) {
-                    itemAddonTotal = item.addons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0);
-                    
-                    // Build addons list HTML
-                    addonsHtml = '<div class="ms-3 small text-muted">';
-                    item.addons.forEach(addon => {
-                        addonsHtml += `
-                            <div class="d-flex justify-content-between">
-                                <span>+ ${addon.quantity}× ${escapeHtml(addon.name || `Addon #${addon.addon_id}`)}</span>
-                                <span>+₱${(addon.price * addon.quantity).toFixed(2)}</span>
-                            </div>
-                        `;
-                    });
-                    addonsHtml += '</div>';
-                }
-                
-                const itemTotal = (itemBasePrice + itemAddonTotal) * item.quantity;
-                subtotal += itemTotal;
-                
-                summaryHtml += `
-                    <div class="mb-2">
-                        <div class="d-flex justify-content-between">
-                            <span>${item.quantity}× ${escapeHtml(item.name)}</span>
-                            <span>₱${itemTotal.toFixed(2)}</span>
-                        </div>
-                        ${addonsHtml}
-                        ${item.special_request ? `<div class="ms-3 small"><i>"${escapeHtml(item.special_request)}"</i></div>` : ''}
-                    </div>
-                `;
-            });
-            
-            const tax = subtotal * taxRate;
-            const total = subtotal + tax;
-            
-            summaryHtml += `
-                <hr>
-                <div class="d-flex justify-content-between">
-                    <strong>Subtotal:</strong>
-                    <strong>₱${subtotal.toFixed(2)}</strong>
-                </div>
-                <div class="d-flex justify-content-between">
-                    <span>Tax (12%):</span>
-                    <span>₱${tax.toFixed(2)}</span>
-                </div>
-                <div class="d-flex justify-content-between fw-bold">
-                    <span>Total:</span>
-                    <span>₱${total.toFixed(2)}</span>
-                </div>
-            `;
-            
-            document.getElementById('modal-summary').innerHTML = summaryHtml;
-            
-            // Reset payment fields
-            document.getElementById('amount-tendered').value = '';
-            document.getElementById('reference-number').value = '';
-            document.getElementById('change-amount').textContent = '₱0.00';
-            document.getElementById('cash').checked = true;
-            document.getElementById('cash-payment-section').style.display = 'block';
-            document.getElementById('reference-section').style.display = 'none';
-            
-            modal.show();
-        }
         
         function updateChangeAmount() {
             const amountTendered = parseFloat(document.getElementById('amount-tendered').value) || 0;
@@ -1999,6 +1901,178 @@ function updateMobileButtons(activeBtn) {
             break;
     }
 }
+
+// For Debug
+
+function showAddonModal(product) {
+    console.log("showAddonModal called for product:", product);
+    currentProductForAddons = product;
+    
+    document.getElementById('addonProductName').textContent = product.name;
+    document.getElementById('specialRequest').value = '';
+    
+    // Load addons for this product
+    console.log("Fetching addons for product_id:", product.id);
+    fetch(`../api/get-addons.php?product_id=${product.id}`)
+        .then(response => {
+            console.log("API Response status:", response.status);
+            if (!response.ok) {
+                throw new Error('Network response was not ok: ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log("Addons data received:", data);
+            const addonList = document.getElementById('addonList');
+            
+            if (data.success && data.addons && data.addons.length > 0) {
+                console.log(`Found ${data.addons.length} addons:`, data.addons);
+                let html = '<h6 class="mb-3">Available Addons:</h6>';
+                
+                data.addons.forEach(addon => {
+                    const maxQty = addon.max_quantity || 1;
+                    console.log("Processing addon:", addon);
+                    html += `
+                        <div class="col-md-6 mb-3">
+                            <div class="card addon-card" data-addon-id="${addon.id}">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6 class="mb-1">${escapeHtml(addon.name)}</h6>
+                                            <p class="text-muted mb-1" style="font-size: 0.9em;">${escapeHtml(addon.description || '')}</p>
+                                            <strong class="text-success">+₱${parseFloat(addon.price).toFixed(2)}</strong>
+                                        </div>
+                                        <div class="addon-quantity">
+                                            <div class="input-group input-group-sm" style="width: 120px;">
+                                                <button class="btn btn-outline-secondary" type="button" onclick="updateAddonQuantity('${addon.id}', -1, ${maxQty})">-</button>
+                                                <input type="text" class="form-control text-center" id="addon_qty_${addon.id}" value="0" readonly>
+                                                <button class="btn btn-outline-secondary" type="button" onclick="updateAddonQuantity('${addon.id}', 1, ${maxQty})">+</button>
+                                            </div>
+                                            <small class="text-muted d-block mt-1">Max: ${maxQty}</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                addonList.innerHTML = html;
+            } else {
+                console.log("No addons found or error in response");
+                addonList.innerHTML = `
+                    <div class="text-center py-4">
+                        <i class="fas fa-plus-circle fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No addons available for this product</p>
+                        <p><small>Debug: ${data.message || 'No addons configured'}</small></p>
+                        <button class="btn btn-sm btn-primary mt-2" onclick="addProductToCart(currentProductForAddons, [], '')">
+                            Add without addons
+                        </button>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading addons:', error);
+            document.getElementById('addonList').innerHTML = `
+                <div class="text-center py-4">
+                    <p class="text-danger">Error loading addons</p>
+                    <p><small>${error.message}</small></p>
+                    <button class="btn btn-sm btn-primary mt-2" onclick="addProductToCart(currentProductForAddons, [], '')">
+                        Add without addons
+                    </button>
+                </div>
+            `;
+        });
+    
+    const modal = new bootstrap.Modal(document.getElementById('addonModal'));
+    modal.show();
+}
+
+function showCheckoutModal() {
+    console.log("showCheckoutModal called");
+    
+    if (cart.length === 0) {
+        showToast('Cart is empty', 'warning');
+        return;
+    }
+    
+    const modal = new bootstrap.Modal(document.getElementById('checkoutModal'));
+    
+    // Update modal summary
+    let summaryHtml = '';
+    let subtotal = 0;
+    
+    cart.forEach((item, index) => {
+        // Calculate item total including addons
+        let itemBasePrice = item.price;
+        let itemAddonTotal = item.addon_total || 0;
+        let addonsHtml = '';
+        
+        if (item.addons && item.addons.length > 0) {
+            itemAddonTotal = item.addons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0);
+            
+            // Build addons list HTML
+            addonsHtml = '<div class="ms-3 small text-muted">';
+            item.addons.forEach(addon => {
+                addonsHtml += `
+                    <div class="d-flex justify-content-between">
+                        <span>+ ${addon.quantity}× ${escapeHtml(addon.name || `Addon #${addon.addon_id}`)}</span>
+                        <span>+₱${(addon.price * addon.quantity).toFixed(2)}</span>
+                    </div>
+                `;
+            });
+            addonsHtml += '</div>';
+        }
+        
+        const itemTotal = (itemBasePrice + itemAddonTotal) * item.quantity;
+        subtotal += itemTotal;
+        
+        summaryHtml += `
+            <div class="mb-2">
+                <div class="d-flex justify-content-between">
+                    <span>${item.quantity}× ${escapeHtml(item.name)}</span>
+                    <span>₱${itemTotal.toFixed(2)}</span>
+                </div>
+                ${addonsHtml}
+                ${item.special_request ? `<div class="ms-3 small"><i>"${escapeHtml(item.special_request)}"</i></div>` : ''}
+            </div>
+        `;
+    });
+    
+    const tax = subtotal * taxRate;
+    const total = subtotal + tax;
+    
+    summaryHtml += `
+        <hr>
+        <div class="d-flex justify-content-between">
+            <strong>Subtotal:</strong>
+            <strong>₱${subtotal.toFixed(2)}</strong>
+        </div>
+        <div class="d-flex justify-content-between">
+            <span>Tax (0%):</span>
+            <span>₱${tax.toFixed(2)}</span>
+        </div>
+        <div class="d-flex justify-content-between fw-bold">
+            <span>Total:</span>
+            <span>₱${total.toFixed(2)}</span>
+        </div>
+    `;
+    
+    document.getElementById('modal-summary').innerHTML = summaryHtml;
+    
+    // Reset payment fields
+    document.getElementById('amount-tendered').value = '';
+    document.getElementById('reference-number').value = '';
+    document.getElementById('change-amount').textContent = '₱0.00';
+    document.getElementById('cash').checked = true;
+    document.getElementById('cash-payment-section').style.display = 'block';
+    document.getElementById('reference-section').style.display = 'none';
+    
+    modal.show();
+}
+
+// For Debug
 
 function getRandomColor() {
     const colors = [

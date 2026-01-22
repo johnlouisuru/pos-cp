@@ -150,27 +150,44 @@ function cleanupOldDisplayEntries() {
  * Get order items for display
  */
 function getOrderItemsForDisplay($orderId) {
-    global $pdo; // Use the existing connection from db.php
+    global $pdo;
     
     $sql = "SELECT 
+                oi.id,
+                oi.product_id,
                 p.name,
+                p.category_id,
                 oi.quantity,
+                oi.unit_price,
                 oi.special_request,
-                c.name as category
+                oi.status
             FROM order_items oi
-            JOIN products p ON oi.product_id = p.id
-            LEFT JOIN categories c ON p.category_id = c.id
+            LEFT JOIN products p ON oi.product_id = p.id
             WHERE oi.order_id = ?
-            ORDER BY c.display_order, p.name";
+            ORDER BY oi.created_at";
     
-    try {
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([$orderId]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (Exception $e) {
-        error_log("Error in getOrderItemsForDisplay: " . $e->getMessage());
-        return [];
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$orderId]);
+    $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Add addons to each item
+    foreach ($items as &$item) {
+        $addonSql = "SELECT 
+                        oa.id,
+                        oa.addon_id,
+                        a.name,
+                        a.price,
+                        oa.quantity
+                    FROM order_item_addons oa
+                    LEFT JOIN addons a ON oa.addon_id = a.id
+                    WHERE oa.order_item_id = ?";
+        
+        $addonStmt = $pdo->prepare($addonSql);
+        $addonStmt->execute([$item['id']]);
+        $item['addons'] = $addonStmt->fetchAll(PDO::FETCH_ASSOC);
     }
+    
+    return $items;
 }
 
 /**
@@ -182,6 +199,26 @@ function getAllDisplaySettings() {
     $sql = "SELECT * FROM public_display_settings ORDER BY display_type";
     $stmt = $pdo->query($sql);
     return $stmt->fetchAll();
+}
+
+function getItemAddons($itemId) {
+    global $pdo;
+    
+    $sql = "SELECT 
+                oa.id,
+                oa.addon_id,
+                a.name,
+                a.price,
+                oa.quantity
+            FROM order_item_addons oa
+            LEFT JOIN addons a ON oa.addon_id = a.id
+            WHERE oa.order_item_id = ?
+            ORDER BY a.name";
+    
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$itemId]);
+    
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 /**

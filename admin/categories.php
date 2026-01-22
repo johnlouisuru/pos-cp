@@ -125,6 +125,21 @@ $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
             padding: 4px 8px;
             border-radius: 20px;
         }
+        .icon-preview {
+    position: relative;
+}
+.copied-tooltip {
+    position: absolute;
+    top: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #28a745;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    white-space: nowrap;
+}
     </style>
 </head>
 <body>
@@ -215,51 +230,51 @@ $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 </div>
                 
                 <!-- Icon Reference -->
-                <div class="card mt-3">
-                    <div class="card-header">
-                        <h6 class="mb-0"><i class="fas fa-icons me-2"></i> Icon Reference</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="row g-2">
-                            <div class="col-4 text-center">
-                                <div class="icon-preview">
-                                    <i class="fas fa-hamburger"></i>
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-icons me-2"></i> Icon Reference (Click the icon to copy its name)</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-2">
+                                <div class="col-4 text-center">
+                                    <div class="icon-preview" onclick="copyToClipboard('fas fa-hamburger', this)" style="cursor: pointer;">
+                                        <i class="fas fa-hamburger"></i>
+                                    </div>
+                                    <small>fas fa-hamburger</small>
                                 </div>
-                                <small>fas fa-hamburger</small>
-                            </div>
-                            <div class="col-4 text-center">
-                                <div class="icon-preview">
-                                    <i class="fas fa-pizza-slice"></i>
+                                <div class="col-4 text-center">
+                                    <div class="icon-preview" onclick="copyToClipboard('fas fa-pizza-slice', this)" style="cursor: pointer;">
+                                        <i class="fas fa-pizza-slice"></i>
+                                    </div>
+                                    <small>fas fa-pizza-slice</small>
                                 </div>
-                                <small>fas fa-pizza-slice</small>
-                            </div>
-                            <div class="col-4 text-center">
-                                <div class="icon-preview">
-                                    <i class="fas fa-wine-glass"></i>
+                                <div class="col-4 text-center">
+                                    <div class="icon-preview" onclick="copyToClipboard('fas fa-wine-glass', this)" style="cursor: pointer;">
+                                        <i class="fas fa-wine-glass"></i>
+                                    </div>
+                                    <small>fas fa-wine-glass</small>
                                 </div>
-                                <small>fas fa-wine-glass</small>
-                            </div>
-                            <div class="col-4 text-center">
-                                <div class="icon-preview">
-                                    <i class="fas fa-utensils"></i>
+                                <div class="col-4 text-center">
+                                    <div class="icon-preview" onclick="copyToClipboard('fas fa-utensils', this)" style="cursor: pointer;">
+                                        <i class="fas fa-utensils"></i>
+                                    </div>
+                                    <small>fas fa-utensils</small>
                                 </div>
-                                <small>fas fa-utensils</small>
-                            </div>
-                            <div class="col-4 text-center">
-                                <div class="icon-preview">
-                                    <i class="fas fa-ice-cream"></i>
+                                <div class="col-4 text-center">
+                                    <div class="icon-preview" onclick="copyToClipboard('fas fa-ice-cream', this)" style="cursor: pointer;">
+                                        <i class="fas fa-ice-cream"></i>
+                                    </div>
+                                    <small>fas fa-ice-cream</small>
                                 </div>
-                                <small>fas fa-ice-cream</small>
-                            </div>
-                            <div class="col-4 text-center">
-                                <div class="icon-preview">
-                                    <i class="fas fa-coffee"></i>
+                                <div class="col-4 text-center">
+                                    <div class="icon-preview" onclick="copyToClipboard('fas fa-coffee', this)" style="cursor: pointer;">
+                                        <i class="fas fa-coffee"></i>
+                                    </div>
+                                    <small>fas fa-coffee</small>
                                 </div>
-                                <small>fas fa-coffee</small>
                             </div>
                         </div>
                     </div>
-                </div>
             </div>
             
             <!-- Categories List -->
@@ -442,6 +457,28 @@ $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 }
             });
         }
+
+        function copyToClipboard(text, element) {
+    navigator.clipboard.writeText(text).then(function() {
+        // Visual feedback
+        const originalBg = element.style.backgroundColor;
+        element.style.backgroundColor = '#d4edda';
+        
+        // Show "Copied!" tooltip
+        const tooltip = document.createElement('div');
+        tooltip.className = 'copied-tooltip';
+        tooltip.textContent = 'Copied!';
+        element.style.position = 'relative';
+        element.appendChild(tooltip);
+        
+        setTimeout(function() {
+            element.style.backgroundColor = originalBg;
+            tooltip.remove();
+        }, 1000);
+    }).catch(function(err) {
+        alert('Failed to copy to clipboard');
+    });
+}
     </script>
 </body>
 </html>

@@ -125,7 +125,7 @@ $recent_orders = $stmt->fetchAll();
                         </div>
                         <div>
                             <h5 class="mb-0">₱<?php echo number_format($stats['today']['revenue'] ?? 0, 2); ?></h5>
-                            <p class="text-muted mb-0">Today's Revenue</p>
+                            <p class="text-muted mb-0">Today's Sales</p>
                         </div>
                     </div>
                 </div>
