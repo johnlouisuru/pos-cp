@@ -8,6 +8,31 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     exit();
 }
 
+// Display session messages
+if (isset($_SESSION['success'])) {
+    echo '<div class="alert alert-success alert-dismissible fade show" role="alert">';
+    echo $_SESSION['success'];
+    echo '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+    echo '</div>';
+    unset($_SESSION['success']);
+}
+
+if (isset($_SESSION['error'])) {
+    echo '<div class="alert alert-danger alert-dismissible fade show" role="alert">';
+    echo $_SESSION['error'];
+    echo '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+    echo '</div>';
+    unset($_SESSION['error']);
+}
+
+if (isset($_SESSION['warning'])) {
+    echo '<div class="alert alert-warning alert-dismissible fade show" role="alert">';
+    echo $_SESSION['warning'];
+    echo '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+    echo '</div>';
+    unset($_SESSION['warning']);
+}
+
 // Get all kitchen stations
 $stmt = $pdo->query("SELECT * FROM kitchen_stations ORDER BY display_order");
 $stations = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -38,34 +63,67 @@ foreach ($products as $product) {
 // Handle bulk assignment
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_assign'])) {
     $station_id = $_POST['station_id'];
-    $product_ids = $_POST['product_ids'] ?? [];
+    $product_ids_str = $_POST['product_ids'] ?? '';
+    
+    // Convert station_id to NULL if empty
+    $station_id = $station_id ?: null;
+    
+    // Convert comma-separated string to array of integers
+    $product_ids = [];
+    if (!empty($product_ids_str)) {
+        $product_ids = array_map('intval', explode(',', $product_ids_str));
+        // Filter out any zeros (invalid IDs)
+        $product_ids = array_filter($product_ids, function($id) {
+            return $id > 0;
+        });
+    }
     
     if (!empty($product_ids)) {
         try {
             $pdo->beginTransaction();
             
-            // Update selected products
-            $placeholders = implode(',', array_fill(0, count($product_ids), '?'));
-            $stmt = $pdo->prepare("UPDATE products SET station_id = ? WHERE id IN ($placeholders)");
-            $stmt->execute(array_merge([$station_id], $product_ids));
-            
-            // Update products NOT selected to remove station assignment
-            if (empty($station_id)) {
-                // If assigning to "No Station", clear all other products' stations
-                $all_products_stmt = $pdo->query("SELECT id FROM products");
-                $all_product_ids = array_column($all_products_stmt->fetchAll(PDO::FETCH_ASSOC), 'id');
-                $unselected_ids = array_diff($all_product_ids, $product_ids);
+            if ($station_id === null) {
+                // Assigning to "No Station" - set station_id to NULL for selected products
+                $placeholders = implode(',', array_fill(0, count($product_ids), '?'));
+                $stmt = $pdo->prepare("UPDATE products SET station_id = NULL WHERE id IN ($placeholders)");
+                $stmt->execute($product_ids);
+            } else {
+                // Assigning to a specific station
+                $placeholders = implode(',', array_fill(0, count($product_ids), '?'));
                 
-                if (!empty($unselected_ids)) {
-                    $placeholders = implode(',', array_fill(0, count($unselected_ids), '?'));
-                    $stmt = $pdo->prepare("UPDATE products SET station_id = NULL WHERE id IN ($placeholders)");
-                    $stmt->execute($unselected_ids);
+                // First, check if station exists and is active
+                $stmt = $pdo->prepare("SELECT id, is_active FROM kitchen_stations WHERE id = ?");
+                $stmt->execute([$station_id]);
+                $station = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if (!$station) {
+                    throw new Exception("Station not found");
                 }
+                
+                if (!$station['is_active']) {
+                    throw new Exception("Cannot assign to inactive station");
+                }
+                
+                // Update selected products
+                $stmt = $pdo->prepare("UPDATE products SET station_id = ? WHERE id IN ($placeholders)");
+                $stmt->execute(array_merge([$station_id], $product_ids));
             }
             
             $pdo->commit();
-            $_SESSION['success'] = "Successfully assigned " . count($product_ids) . " product(s) to station.";
-        } catch (PDOException $e) {
+            
+            // Update session message with correct count
+            $count = count($product_ids);
+            $station_name = "No Station";
+            if ($station_id) {
+                $stmt = $pdo->prepare("SELECT name FROM kitchen_stations WHERE id = ?");
+                $stmt->execute([$station_id]);
+                $station = $stmt->fetch(PDO::FETCH_ASSOC);
+                $station_name = $station['name'] ?? "Unknown Station";
+            }
+            
+            $_SESSION['success'] = "Successfully assigned {$count} product(s) to {$station_name}.";
+            
+        } catch (Exception $e) {
             $pdo->rollBack();
             $_SESSION['error'] = "Error updating assignments: " . $e->getMessage();
         }
@@ -524,7 +582,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_assign'])) {
                     localStorage.removeItem('assignProductId');
                     
                     showAlert('info', `Ready to assign products to "${preSelectStationName}"`);
-                }, 500);
+                }, 500000);
             }
         });
         
@@ -547,39 +605,77 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_assign'])) {
                 });
             });
             
-            // Handle bulk form submission
-            $('#bulkAssignmentForm').on('submit', function(e) {
-                if (selectedProductIds.size === 0) {
-                    e.preventDefault();
-                    showAlert('warning', 'Please select at least one product');
-                    return;
-                }
+            // Handle bulk form submission via AJAX
+$('#bulkAssignmentForm').on('submit', function(e) {
+    e.preventDefault();
+    
+    console.log('AJAX form submission started');
+    console.log('Selected products:', Array.from(selectedProductIds));
+    console.log('Selected station:', selectedStationId);
+    
+    if (selectedProductIds.size === 0) {
+        showAlert('warning', 'Please select at least one product');
+        return;
+    }
+    
+    if (selectedStationId === null) {
+        showAlert('warning', 'Please select a station first');
+        return;
+    }
+    
+    // Show confirmation
+    Swal.fire({
+        title: 'Confirm Assignment',
+        html: `Assign <strong>${selectedProductIds.size}</strong> product(s) to selected station?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#198754',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, assign them!',
+        showLoaderOnConfirm: true,
+        preConfirm: () => {
+            return new Promise((resolve, reject) => {
+                // Prepare form data
+                const formData = new FormData();
+                formData.append('bulk_assign', '1');
+                formData.append('station_id', selectedStationId || '');
+                formData.append('product_ids', Array.from(selectedProductIds).join(','));
                 
-                if (selectedStationId === null) {
-                    e.preventDefault();
-                    showAlert('warning', 'Please select a station first');
-                    return;
-                }
+                console.log('Sending data:', {
+                    station_id: selectedStationId || '',
+                    product_ids: Array.from(selectedProductIds).join(',')
+                });
                 
-                $('#selectedProductIds').val(Array.from(selectedProductIds).join(','));
-                $('#selectedStationId').val(selectedStationId);
-                
-                // Show confirmation
-                e.preventDefault();
-                Swal.fire({
-                    title: 'Confirm Assignment',
-                    html: `Assign <strong>${selectedProductIds.size}</strong> product(s) to selected station?`,
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonColor: '#198754',
-                    cancelButtonColor: '#6c757d',
-                    confirmButtonText: 'Yes, assign them!'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        $(this).off('submit').submit();
+                // Send AJAX request
+                $.ajax({
+                    url: window.location.href,
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        console.log('AJAX success response received');
+                        // The PHP will redirect, so we don't need to do anything here
+                        resolve();
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('AJAX error:', error);
+                        console.error('Response:', xhr.responseText);
+                        reject('Failed to assign products. Please try again.');
                     }
                 });
             });
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Show success message and reload
+            showAlert('success', 'Products assigned successfully!');
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        }
+    });
+});
         });
         
         function selectStation(stationId) {

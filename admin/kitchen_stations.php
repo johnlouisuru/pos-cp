@@ -178,6 +178,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="station_assignments.php">
+                            <i class="fas fa-project-diagram me-1"></i> Assignments
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="addons.php">
                             <i class="fas fa-plus-circle me-1"></i> Addons
                         </a>
