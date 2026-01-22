@@ -198,6 +198,39 @@ if (!empty($_SESSION['cart'])) {
         background-clip: text;
         color: transparent; /* Make text transparent so gradient shows */
     }
+
+    /* Adjust product card spacing for 2-column layout */
+@media (min-width: 768px) {
+    .product-card {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .product-body {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .product-actions {
+        margin-top: auto;
+    }
+    
+    .product-image {
+        height: 180px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+    
+    .product-image img {
+        max-height: 100%;
+        width: auto;
+        object-fit: cover;
+    }
+}
     </style>
 </head>
 <body>
@@ -242,112 +275,109 @@ if (!empty($_SESSION['cart'])) {
         </div>
     </nav>
 
-    <!-- Products Grid -->
-    <main class="container products-container p-2">
-        <div id="productsGrid">
-            <?php foreach ($categories as $category): ?>
-            <?php if (!empty($productsByCategory[$category['id']])): ?>
-            <div class="category-section" data-category="<?php echo $category['id']; ?>">
-                <h4 class="category-title mb-3 p-2 gradient-text" style="color: <?php echo $category['color_code']; ?>; text-shadow: 2px 2px 2px #3d2d31;">
-                    <!-- <i class="fas fa-<?php echo getCategoryIcon($category['name']); ?> me-2"></i> -->
-                    <?php echo htmlspecialchars($category['name']); ?>
-                </h4>
-                
-                <div class="row p-4">
-                    <?php foreach ($productsByCategory[$category['id']] as $product): ?>
-                    <?php 
-                    $hasAddons = $product['has_addons'] || !empty($product['addons_data']);
-                    $isAvailable = $product['stock'] > 0 || $product['stock'] === null;
-                    ?>
-                    <div class="col-md-4 col-sm-6 mb-4 product-item" 
-                         data-category="<?php echo $product['category_id']; ?>"
-                         data-id="<?php echo $product['id']; ?>">
+  <!-- Products Grid -->
+<main class="container products-container p-1">
+    <div id="productsGrid">
+        <?php foreach ($categories as $category): ?>
+        <?php if (!empty($productsByCategory[$category['id']])): ?>
+        <div class="category-section" data-category="<?php echo $category['id']; ?>">
+            <h4 class="category-title mb-3 p-1 gradient-text" style="color: <?php echo $category['color_code']; ?>; text-shadow: 2px 2px 2px #3d2d31;">
+                <!-- <i class="fas fa-<?php echo getCategoryIcon($category['name']); ?> me-2"></i> -->
+                <?php echo htmlspecialchars($category['name']); ?>
+            </h4>
+            
+            <div class="row p-1">
+                <?php foreach ($productsByCategory[$category['id']] as $product): ?>
+                <?php 
+                $hasAddons = $product['has_addons'] || !empty($product['addons_data']);
+                $isAvailable = $product['stock'] > 0 || $product['stock'] === null;
+                ?>
+                <!-- CHANGED: Added col-6 for mobile -->
+                <div class="col-6 col-sm-6 col-md-6 mb-4 product-item" 
+                     data-category="<?php echo $product['category_id']; ?>"
+                     data-id="<?php echo $product['id']; ?>">
+                    
+                    <div class="product-card">
+                        <div class="product-image">
+                            <?php 
+                                if(empty($product['image_url'])) { ?>
+                                    <i class="fas fa-<?php echo getProductIcon($product['name']); ?>"></i>
+                                  <?php }else { ?>
+                                  <img src="../<?php echo $product['image_url']; ?>"  height="100%" width="100px" class="img-fluid">
+                                    <?php  } ?>
+                        </div>
                         
-                        <div class="product-card">
-                            <div class="product-image">
-                                <!-- <i class="fas fa-<?php echo getProductIcon($product['name']); ?>"></i> -->
+                        <div class="product-body">
+                            <h5 class="product-title"><?php echo htmlspecialchars($product['name']); ?></h5>
+                            
+                            <?php if (!empty($product['description'])): ?>
+                            <p class="product-description">
+                                <?php echo htmlspecialchars($product['description']); ?>
+                            </p>
+                            <?php endif; ?>
+                            
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="product-price">
+                                    ₱<?php echo number_format($product['price'], 2); ?>
+                                </span>
                                 
-                                <?php 
-                                    if(empty($product['image_url'])) { ?>
-                                        <i class="fas fa-<?php echo getProductIcon($product['name']); ?>"></i>
-                                      <?php }else { ?>
-                                      <img src="../<?php echo $product['image_url']; ?>"  height="100%" width="100px" class="img-fluid">
-                                        <?php  } ?>
-
-                               
+                                <?php if ($product['stock'] !== null): ?>
+                                <span class="product-stock <?php echo $isAvailable ? 'in-stock' : 'out-of-stock'; ?>">
+                                    <?php echo $isAvailable ? 'In Stock' : 'Out of Stock'; ?>
+                                </span>
+                                <?php endif; ?>
                             </div>
                             
-                            <div class="product-body">
-                                <h5 class="product-title"><?php echo htmlspecialchars($product['name']); ?></h5>
-                                
-                                <?php if (!empty($product['description'])): ?>
-                                <p class="product-description">
-                                    <?php echo htmlspecialchars($product['description']); ?>
-                                </p>
-                                <?php endif; ?>
-                                
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <span class="product-price">
-                                        ₱<?php echo number_format($product['price'], 2); ?>
-                                    </span>
-                                    
-                                    <?php if ($product['stock'] !== null): ?>
-                                    <span class="product-stock <?php echo $isAvailable ? 'in-stock' : 'out-of-stock'; ?>">
-                                        <?php echo $isAvailable ? 'In Stock' : 'Out of Stock'; ?>
-                                    </span>
-                                    <?php endif; ?>
-                                </div>
-                                
+                            <?php if ($hasAddons): ?>
+                            <div class="mb-2">
+                                <small class="text-muted">
+                                    <i class="fas fa-plus-circle"></i> Customizable with add-ons
+                                </small>
+                            </div>
+                            <?php endif; ?>
+                            
+                            <div class="product-actions">
                                 <?php if ($hasAddons): ?>
-                                <div class="mb-2">
-                                    <small class="text-muted">
-                                        <i class="fas fa-plus-circle"></i> Customizable with add-ons
-                                    </small>
+                                <button class="add-to-cart-btn w-100" 
+                                        onclick="showAddonsModal(<?php echo $product['id']; ?>)"
+                                        <?php echo !$isAvailable ? 'disabled' : ''; ?>>
+                                    <i class="fas fa-cog"></i> Customize & Add
+                                </button>
+                                <?php else: ?>
+                                <div class="quantity-control">
+                                    <button class="qty-btn" onclick="changeQuantity(<?php echo $product['id']; ?>, -1)">
+                                        <i class="fas fa-minus"></i>
+                                    </button>
+                                    <span class="qty-display" id="qty-<?php echo $product['id']; ?>">1</span>
+                                    <button class="qty-btn" onclick="changeQuantity(<?php echo $product['id']; ?>, 1)">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
                                 </div>
+                                <button class="add-to-cart-btn" 
+                                        onclick="addProductToCart(<?php echo $product['id']; ?>)"
+                                        <?php echo !$isAvailable ? 'disabled' : ''; ?>>
+                                    <i class="fas fa-cart-plus"></i> Add
+                                </button>
                                 <?php endif; ?>
-                                
-                                <div class="product-actions">
-                                    <?php if ($hasAddons): ?>
-                                    <button class="add-to-cart-btn w-100" 
-                                            onclick="showAddonsModal(<?php echo $product['id']; ?>)"
-                                            <?php echo !$isAvailable ? 'disabled' : ''; ?>>
-                                        <i class="fas fa-cog"></i> Customize & Add
-                                    </button>
-                                    <?php else: ?>
-                                    <div class="quantity-control">
-                                        <button class="qty-btn" onclick="changeQuantity(<?php echo $product['id']; ?>, -1)">
-                                            <i class="fas fa-minus"></i>
-                                        </button>
-                                        <span class="qty-display" id="qty-<?php echo $product['id']; ?>">1</span>
-                                        <button class="qty-btn" onclick="changeQuantity(<?php echo $product['id']; ?>, 1)">
-                                            <i class="fas fa-plus"></i>
-                                        </button>
-                                    </div>
-                                    <button class="add-to-cart-btn" 
-                                            onclick="addProductToCart(<?php echo $product['id']; ?>)"
-                                            <?php echo !$isAvailable ? 'disabled' : ''; ?>>
-                                        <i class="fas fa-cart-plus"></i> Add
-                                    </button>
-                                    <?php endif; ?>
-                                </div>
                             </div>
                         </div>
                     </div>
-                    <?php endforeach; ?>
                 </div>
+                <?php endforeach; ?>
             </div>
-            <?php endif; ?>
-            <?php endforeach; ?>
-        </div>
-        
-        <?php if (empty($products)): ?>
-        <div class="text-center py-5">
-            <i class="fas fa-utensils fa-4x text-muted mb-3"></i>
-            <h4 class="text-muted">Menu Coming Soon</h4>
-            <p class="text-muted">We're preparing our delicious offerings!</p>
         </div>
         <?php endif; ?>
-    </main>
+        <?php endforeach; ?>
+    </div>
+    
+    <?php if (empty($products)): ?>
+    <div class="text-center py-5">
+        <i class="fas fa-utensils fa-4x text-muted mb-3"></i>
+        <h4 class="text-muted">Menu Coming Soon</h4>
+        <p class="text-muted">We're preparing our delicious offerings!</p>
+    </div>
+    <?php endif; ?>
+</main>
 
     <!-- Addons Modal -->
     <div class="addons-modal" id="addonsModal">
