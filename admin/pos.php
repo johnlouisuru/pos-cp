@@ -865,10 +865,14 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         <!-- Header -->
         <header class="pos-header">
             <div class="header-left">
-            <img src="../uploads/samara.jpg" height="30px" width="30px" alt="Icon" class="header-icon me-2">
-                <h3> SAMARA's POS</h3>
+            
+                <h5><img src="../uploads/samara.jpg" height="30px" width="30px" alt="Icon" class="header-icon me-2"> </h5>
             </div>
             <div class="header-right">
+            <a class="mobile-btn fs-5" href="../display" id="mobile-checkout-btn">
+                    <i class="fas fa-list"></i>
+                    <span></span>
+                </a>
                 <div class="user-info">
                     <i class="fas fa-user-circle fa-lg"></i>
                     <div>
@@ -876,7 +880,8 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                         <small class="text-light"><?php echo ucfirst($user_role); ?></small>
                     </div>
                 </div>
-                <div id="current-time" class="text-light"></div>
+                
+                <div id="current-time" class="text-light fs-6"></div>
                 <?= ($_SESSION['role'] == 'admin') ? '<a href="dashboard.php" class="btn btn-info">Dashboard</a>' : '' ?>
                 <a href="logout.php" class="btn btn-sm btn-outline-light">
                     <i class="fas fa-sign-out-alt me-1"></i> Logout
