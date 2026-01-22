@@ -61,6 +61,9 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'kitchen') {
                             <input class="form-check-input" type="checkbox" id="soundToggle" checked>
                             <label class="form-check-label text-light" for="soundToggle">Sound</label>
                         </div>
+                        <a class="btn btn-sm btn-outline-light" href="../admin/logout.php">
+                                <i class="fas fa-door-open"></i> Logout
+                            </a>
                     </div>
                 </div>
             </div>

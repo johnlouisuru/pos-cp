@@ -1,29 +1,15 @@
 <?php
 
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+// ini_set('display_errors', 1);
+// ini_set('display_startup_errors', 1);
+// error_reporting(E_ALL);
 // display/index.php (UPDATED)
 require_once '../includes/db.php';
 require_once '../includes/display-functions.php';
 
-// Test database connection
-try {
-    $test = $pdo->query("SELECT COUNT(*) as count FROM order_items WHERE order_id = 2");
-    $result = $test->fetch();
-    error_log("Test query result: " . print_r($result, true));
-} catch (Exception $e) {
-    error_log("Database connection error: " . $e->getMessage());
-}
-
-$settings = getDisplaySettings();
-$maxItems = $settings['max_display_items'] ?? 10;
-$orders = getProcessingOrders($maxItems);
-
-// Log orders for debugging
-error_log("Total orders: " . count($orders));
-foreach ($orders as $order) {
-    error_log("Order: " . $order['order_number'] . " ID: " . $order['order_id']);
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'cashier') {
+    header('Location: ../admin/login.php');
+    exit();
 }
 
 // display/index.php - Update the settings line
@@ -83,6 +69,9 @@ $orders = getProcessingOrders($maxItems);
                             <input class="form-check-input" type="checkbox" id="soundToggle" checked>
                             <label class="form-check-label text-light" for="soundToggle">Sound</label>
                         </div>
+                        <a class="btn btn-sm btn-outline-light" href="../admin/logout.php">
+                                <i class="fas fa-door-open"></i> Logout
+                            </a>
                     </div>
                 </div>
             </div>

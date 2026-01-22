@@ -1,7 +1,5 @@
 <?php
-// includes/display-functions.php (UPDATED)
-require_once 'db.php';
-
+// includes/display-functions.php (UPDATED VERSION)
 /**
  * Get all active orders for display
  */
@@ -152,21 +150,7 @@ function cleanupOldDisplayEntries() {
  * Get order items for display
  */
 function getOrderItemsForDisplay($orderId) {
-    // Instead of using global, get the connection directly
-    require_once 'db.php'; // Make sure this path is correct
-    
-    // Re-establish connection if needed
-    $host = 'localhost';
-    $dbname = 'posv1';
-    $username = 'root'; // Change if needed
-    $password = ''; // Change if needed
-    
-    try {
-        $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    } catch (PDOException $e) {
-        die("Connection failed: " . $e->getMessage());
-    }
+    global $pdo; // Use the existing connection from db.php
     
     $sql = "SELECT 
                 p.name,

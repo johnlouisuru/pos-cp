@@ -3,9 +3,17 @@
 require_once '../config/database.php';
 
 // Redirect if already logged in
-if (isset($_SESSION['user_id'])) {
-    header('Location: pos.php');
-    exit();
+if (isset($_SESSION['user_id']) && isset($_SESSION['role'])) {
+    if($_SESSION['role'] === 'admin') {
+        header('Location: pos.php'); 
+        exit();
+    }else if($_SESSION['role'] === 'cashier') {
+        header('Location: ../display/'); 
+        exit();
+    } else if($_SESSION['role'] === 'kitchen') {
+        header('Location: ../display/kitchen.php'); 
+        exit();
+    }
 }
 
 $error = '';
@@ -31,6 +39,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             if($_SESSION['role'] === 'admin') {
                 header('Location: dashboard.php'); 
+                exit();
+            }else if($_SESSION['role'] === 'cashier') {
+                header('Location: ../display/'); 
+                exit();
+            } else if($_SESSION['role'] === 'kitchen') {
+                header('Location: ../display/kitchen.php'); 
                 exit();
             }
             header('Location: pos.php');
