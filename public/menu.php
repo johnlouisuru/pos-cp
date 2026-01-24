@@ -1408,49 +1408,50 @@ if (!empty($_SESSION['cart'])) {
     hideAddonsModal();
 }
 
-    // ========== CART FUNCTIONS ==========
-    function addToCart(productId, quantity = 1, addons = [], specialRequest = '') {
-        console.log('Adding to cart:', { productId, quantity, addons, specialRequest });
+   function addToCart(productId, quantity = 1, addons = [], specialRequest = '') {
+    console.log('Adding to cart:', { productId, quantity, addons, specialRequest });
+    
+    fetch('api/add-to-cart.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            product_id: productId,
+            quantity: quantity,
+            addons: addons,
+            special_request: specialRequest
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Cart response:', data);
         
-        fetch('api/add-to-cart.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                product_id: productId,
-                quantity: quantity,
-                addons: addons,
-                special_request: specialRequest
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log('Cart response:', data);
+        if (data.success) {
+            updateCartSummary(data);
             
-            if (data.success) {
-                updateCartSummary(data);
-                
-                // Reset product quantity display
-                const qtyElement = document.getElementById(`qty-${productId}`);
-                if (qtyElement) {
-                    qtyElement.textContent = '0';
-                }
-                
-                // Refresh cart display IMMEDIATELY
-                refreshCartItems();
-                
-                // toastr.success('Added to cart!');
-                
-            } else {
-                toastr.error(data.message || 'Failed to add to cart');
+            // Reset product quantity display
+            const qtyElement = document.getElementById(`qty-${productId}`);
+            if (qtyElement) {
+                qtyElement.textContent = '0';
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            toastr.error('Network error. Please try again.');
-        });
-    }
+            
+            // Refresh cart display ONLY if sidebar is open
+            if (document.getElementById('cartSidebar').classList.contains('open')) {
+                refreshCartItems();
+            }
+            
+            // toastr.success('Added to cart!');
+            
+        } else {
+            toastr.error(data.message || 'Failed to add to cart');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        toastr.error('Network error. Please try again.');
+    });
+}
 
     function addProductToCart(productId) {
         const qtyElement = document.getElementById('qty-' + productId);
@@ -1482,9 +1483,15 @@ function toggleCart() {
     
     sidebar.classList.toggle('open');
     
-    // Only refresh cart when opening
     if (isOpening) {
+        // Only refresh when opening
         refreshCartItems();
+    } else {
+        // When closing, clear any pending refresh
+        if (cartRefreshTimeout) {
+            clearTimeout(cartRefreshTimeout);
+            cartRefreshTimeout = null;
+        }
     }
 }
 
@@ -1505,9 +1512,9 @@ function toggleCart() {
         updateCheckoutButtons(count);
         
         // Refresh cart display if sidebar is open
-        if (document.getElementById('cartSidebar').classList.contains('open')) {
-            refreshCartItems();
-        }
+        // if (document.getElementById('cartSidebar').classList.contains('open')) {
+        //     refreshCartItems();
+        // }
     }
 
     function updateCheckoutButtons(cartCount) {
@@ -1528,8 +1535,16 @@ function toggleCart() {
 
 // FIXED: Refresh cart items with debouncing
 let cartRefreshTimeout = null;
+let isRefreshing = false; // Add a flag to prevent overlapping refreshes
+
 function refreshCartItems() {
     console.log('Refreshing cart items...');
+    
+    // Don't refresh if already refreshing
+    if (isRefreshing) {
+        console.log('Already refreshing, skipping...');
+        return;
+    }
     
     // Clear any existing timeout
     if (cartRefreshTimeout) {
@@ -1538,6 +1553,8 @@ function refreshCartItems() {
     
     // Set a timeout to prevent rapid successive calls
     cartRefreshTimeout = setTimeout(function() {
+        isRefreshing = true;
+        
         fetch('api/get-cart.php')
             .then(response => {
                 if (!response.ok) {
@@ -1555,13 +1572,14 @@ function refreshCartItems() {
                 console.error('Error refreshing cart:', error);
             })
             .finally(() => {
+                isRefreshing = false;
                 cartRefreshTimeout = null;
             });
     }, 300); // 300ms debounce delay
 }
 
 
-    // FIXED: Update cart display - SIMPLIFIED VERSION
+ // FIXED: Update cart display with proper button structure
 function updateCartDisplay(cart) {
     const cartItemsContainer = document.querySelector('.cart-items');
     
@@ -1634,14 +1652,14 @@ function updateCartDisplay(cart) {
                     </div>
                 </div>
                 <div class="cart-item-actions">
-                    <button type="button" class="btn btn-sm btn-outline-secondary">
+                    <button type="button" class="btn btn-sm btn-outline-secondary minus-btn">
                         <i class="fas fa-minus"></i>
                     </button>
-                    <span class="mx-2">${item.quantity}</span>
-                    <button type="button" class="btn btn-sm btn-outline-secondary">
+                    <span class="mx-2 quantity-display">${item.quantity}</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary plus-btn">
                         <i class="fas fa-plus"></i>
                     </button>
-                    <button type="button" class="btn btn-sm btn-danger ms-2">
+                    <button type="button" class="btn btn-sm btn-danger ms-2 delete-btn">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -1689,40 +1707,52 @@ function updateCartDisplay(cart) {
         }
     });
 
-    // FIXED: Add event delegation for cart item actions
+// FIXED: Add event delegation for cart item actions
 document.addEventListener('click', function(event) {
+    // Don't handle if we're already refreshing
+    if (isRefreshing) return;
+    
     // Handle cart item delete
-    if (event.target.closest('.cart-item-actions .btn-danger')) {
-        const cartItem = event.target.closest('.cart-item');
+    const deleteBtn = event.target.closest('.cart-item-actions .btn-danger');
+    if (deleteBtn) {
+        const cartItem = deleteBtn.closest('.cart-item');
         if (cartItem) {
             const productId = cartItem.dataset.id;
-            if (productId && confirm('Remove this item from cart?')) {
-                removeCartItem(productId);
+            if (productId) {
                 event.stopPropagation();
+                event.preventDefault();
+                removeCartItem(productId);
+                return;
             }
         }
     }
     
     // Handle cart item quantity minus
-    if (event.target.closest('.cart-item-actions .btn-outline-secondary:first-child')) {
-        const cartItem = event.target.closest('.cart-item');
+    const minusBtn = event.target.closest('.cart-item-actions .btn-outline-secondary:first-child');
+    if (minusBtn) {
+        const cartItem = minusBtn.closest('.cart-item');
         if (cartItem) {
             const productId = cartItem.dataset.id;
             if (productId) {
-                updateCartItem(productId, -1);
                 event.stopPropagation();
+                event.preventDefault();
+                updateCartItem(productId, -1);
+                return;
             }
         }
     }
     
     // Handle cart item quantity plus
-    if (event.target.closest('.cart-item-actions .btn-outline-secondary:nth-child(2)')) {
-        const cartItem = event.target.closest('.cart-item');
+    const plusBtn = event.target.closest('.cart-item-actions .btn-outline-secondary:nth-child(2)');
+    if (plusBtn) {
+        const cartItem = plusBtn.closest('.cart-item');
         if (cartItem) {
             const productId = cartItem.dataset.id;
             if (productId) {
-                updateCartItem(productId, 1);
                 event.stopPropagation();
+                event.preventDefault();
+                updateCartItem(productId, 1);
+                return;
             }
         }
     }
@@ -1736,9 +1766,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize cart summary
     const cartCount = <?php echo $cartCount; ?>;
     updateCheckoutButtons(cartCount);
-    
-    // Remove the auto-refresh on load to prevent loops
-    // refreshCartItems(); // COMMENT THIS OUT
     
     // Close cart when clicking outside
     document.addEventListener('click', function(event) {
@@ -1773,6 +1800,9 @@ document.addEventListener('DOMContentLoaded', function() {
 function updateCartItem(productId, change) {
     console.log('Updating item:', productId, change);
     
+    // Prevent multiple clicks
+    if (isRefreshing) return;
+    
     fetch('api/update-cart-item.php', {
         method: 'POST',
         headers: {
@@ -1783,15 +1813,14 @@ function updateCartItem(productId, change) {
             change: parseInt(change)
         })
     })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        return response.json();
-    })
+    .then(response => response.json())
     .then(data => {
         if (data.success) {
             updateCartSummary(data);
+            // Only refresh if cart sidebar is open
+            if (document.getElementById('cartSidebar').classList.contains('open')) {
+                refreshCartItems();
+            }
             toastr.info('Cart updated');
         } else {
             toastr.error(data.message || 'Failed to update cart');
@@ -1807,6 +1836,11 @@ function updateCartItem(productId, change) {
 function removeCartItem(productId) {
     console.log('Removing item:', productId);
     
+    // Prevent multiple clicks
+    if (isRefreshing) return;
+    
+    if (!confirm('Remove this item from cart?')) return;
+    
     fetch('api/remove-cart-item.php', {
         method: 'POST',
         headers: {
@@ -1816,15 +1850,14 @@ function removeCartItem(productId) {
             product_id: parseInt(productId)
         })
     })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        return response.json();
-    })
+    .then(response => response.json())
     .then(data => {
         if (data.success) {
             updateCartSummary(data);
+            // Only refresh if cart sidebar is open
+            if (document.getElementById('cartSidebar').classList.contains('open')) {
+                refreshCartItems();
+            }
             toastr.success('Removed from cart');
         } else {
             toastr.error(data.message || 'Failed to remove item');
@@ -1896,6 +1929,13 @@ function updateAddonTotal() {
     
     document.getElementById('addonTotalPrice').textContent = total.toFixed(2);
 }
+
+// Clean up when leaving the page
+window.addEventListener('beforeunload', function() {
+    if (cartRefreshTimeout) {
+        clearTimeout(cartRefreshTimeout);
+    }
+});
 </script>
 </body>
 </html>
