@@ -283,15 +283,15 @@ $total = $subtotal + $tax;
                                     </label>
                                 </div>
                                 <div class="form-check mb-2">
-                                    <input class="form-check-input" type="radio" name="payment_method" id="card" value="bank">
+                                    <input class="form-check-input" type="radio" name="payment_method" id="card" value="bank" disabled>
                                     <label class="form-check-label" for="card">
-                                        <i class="fas fa-credit-card"></i> Bank Transfer
+                                        <i class="fas fa-credit-card"></i> Bank Transfer [Coming Soon]
                                     </label>
                                 </div>
                                 <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="payment_method" id="ewallet" value="ewallet">
+                                    <input class="form-check-input" type="radio" name="payment_method" id="ewallet" value="ewallet" disabled>
                                     <label class="form-check-label" for="ewallet">
-                                        <i class="fas fa-wallet"></i> E-Wallet (GCash)
+                                        <i class="fas fa-wallet"></i> E-Wallet (GCash) [Coming Soon]
                                     </label>
                                 </div>
                             </div>
@@ -377,9 +377,13 @@ $total = $subtotal + $tax;
         </div>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+    
+
     
     <script>
         // Form validation and confirmation

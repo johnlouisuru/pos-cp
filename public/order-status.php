@@ -16,24 +16,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if(!empty($pin)) {
-        $get_onumber_from_online_orders = "
+    $get_onumber_from_online_orders = "
         SELECT order_number
         FROM online_orders
         WHERE tracking_pin = ?
         LIMIT 1
-        ";
+    ";
 
-        $stmt = $pdo->prepare($get_onumber_from_online_orders);
-        $stmt->execute([$pin]);
-        $result = $stmt->fetch();
+    $stmt = $pdo->prepare($get_onumber_from_online_orders);
+    $stmt->execute([$pin]);
+    $result = $stmt->fetch();
 
-        if ($result) {
-            $orderNumberFromOnline = $result['order_number'];
-        } else {
-            // Handle case where PIN is not found
-            $orderNumberFromOnline = null;
-            // or throw an error, redirect, etc.
-        }
+    if ($result) {
+        $orderNumberFromOnline = $result['order_number'];
+    } else {
+        $orderNumberFromOnline = null;
+    }
 } else {
     $pin = '';
 }
@@ -41,6 +39,8 @@ if(!empty($pin)) {
 // Search for order
 $order = null;
 $orderItems = [];
+$recalculatedSubtotal = 0; // Add this variable
+$recalculatedTotal = 0; // Add this variable
 
 if (!empty($orderNumber) || !empty($nickname) || !empty($orderNumberFromOnline)) {
     try {
@@ -61,65 +61,75 @@ if (!empty($orderNumber) || !empty($nickname) || !empty($orderNumberFromOnline))
         $order = $stmt->fetch();
         
         if ($order) {
-    // Get order items WITH ADDONS (using the simpler approach)
-    $itemsSql = "
-        SELECT 
-            oi.id as order_item_id,
-            p.name,
-            oi.quantity,
-            oi.unit_price,
-            oi.total_price,
-            oi.special_request,
-            oi.status as item_status
-        FROM order_items oi
-        JOIN products p ON oi.product_id = p.id
-        WHERE oi.order_id = ?
-        ORDER BY oi.id
-    ";
-    
-    $itemsStmt = $pdo->prepare($itemsSql);
-    $itemsStmt->execute([$order['id']]);
-    $orderItems = $itemsStmt->fetchAll();
-    
-    // Get addons for each order item
-    foreach ($orderItems as &$item) {
-        $addonsSql = "
-            SELECT 
-                a.name,
-                oia.price_at_time as price,
-                oia.quantity
-            FROM order_item_addons oia
-            JOIN addons a ON oia.addon_id = a.id
-            WHERE oia.order_item_id = ?
-        ";
-        
-        $addonsStmt = $pdo->prepare($addonsSql);
-        $addonsStmt->execute([$item['order_item_id']]);
-        $item['addons'] = $addonsStmt->fetchAll();
-        
-        // Calculate item total with addons
-        $item['item_total'] = $item['total_price'];
-        foreach ($item['addons'] as $addon) {
-            $item['item_total'] += ($addon['price'] * $addon['quantity']);
+            // Get order items WITH ADDONS
+            $itemsSql = "
+                SELECT 
+                    oi.id as order_item_id,
+                    p.name,
+                    oi.quantity,
+                    oi.unit_price,
+                    oi.total_price,
+                    oi.special_request,
+                    oi.status as item_status
+                FROM order_items oi
+                JOIN products p ON oi.product_id = p.id
+                WHERE oi.order_id = ?
+                ORDER BY oi.id
+            ";
+            
+            $itemsStmt = $pdo->prepare($itemsSql);
+            $itemsStmt->execute([$order['id']]);
+            $orderItems = $itemsStmt->fetchAll();
+            
+            // Get addons for each order item and recalculate totals
+            foreach ($orderItems as &$item) {
+                $addonsSql = "
+                    SELECT 
+                        a.name,
+                        oia.price_at_time as price,
+                        oia.quantity
+                    FROM order_item_addons oia
+                    JOIN addons a ON oia.addon_id = a.id
+                    WHERE oia.order_item_id = ?
+                ";
+                
+                $addonsStmt = $pdo->prepare($addonsSql);
+                $addonsStmt->execute([$item['order_item_id']]);
+                $item['addons'] = $addonsStmt->fetchAll();
+                
+                // Calculate item total with addons
+                $item['item_total'] = $item['total_price'];
+                foreach ($item['addons'] as $addon) {
+                    $item['item_total'] += ($addon['price'] * $addon['quantity']);
+                }
+                
+                // Add to recalculated subtotal
+                $recalculatedSubtotal += $item['item_total'];
+            }
+            unset($item); // Break the reference
+            
+            // Recalculate total with tax and discounts
+            $recalculatedTax = $recalculatedSubtotal * 0; // 0% tax - adjust if needed
+            $discount = $order['discount_amount'] ?? 0;
+            $recalculatedTotal = $recalculatedSubtotal + $recalculatedTax - $discount;
+            
+        } else {
+            $searchError = "Order not found. Please check your order number or nickname.";
         }
-    }
-    unset($item); // Break the reference
-} else {
-    $searchError = "Order not found. Please check your order number or nickname.";
-}
         
     } catch (Exception $e) {
         $searchError = "Error searching for order: " . $e->getMessage();
     }
-}
-else {
-$message = "Please enter an order number, PIN, or nickname to track your order.";
+} else {
+    $message = "Please enter an order number, PIN, or nickname to track your order.";
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+    <!-- ... keep your existing head section ... -->
+     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="../uploads/samara.jpg">
     <title>SAMARA'S CAFFEINATED DREAMS</title>
@@ -258,6 +268,14 @@ $message = "Please enter an order number, PIN, or nickname to track your order."
     color: #28a745;
     font-weight: 500;
 }
+
+.table td .badge {
+  white-space: nowrap;   /* keep badge text in one line */
+  max-width: 100%;       /* force it to stay inside cell */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
     </style>
 </head>
 <body>
@@ -265,8 +283,8 @@ $message = "Please enter an order number, PIN, or nickname to track your order."
         <div class="order-tracker">
             <!-- Header -->
             <div class="tracker-header">
-                <h1><i class="fas fa-search-location"></i> Track Your Order</h1>
-                <p class="mb-0">Enter your order number or nickname to check status</p>
+                <h1><i class="fas fa-search-location"></i> Your Order Status </h1>
+                <p class="mb-0">Thank you for your patience! ❤︎⁠</p>
             </div>
             
             <!-- Search Form -->
@@ -277,47 +295,7 @@ $message = "Please enter an order number, PIN, or nickname to track your order."
             }
             ?>
                 <?php if (!$order): ?>
-                    <div class="search-form">
-                        <form method="POST" action="">
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <label class="form-label">Order Number / PIN</label>
-                                    <input type="text" class="form-control form-control-lg" 
-                                           name="order_number" value="<?php echo htmlspecialchars($orderNumber); ?>"
-                                           placeholder="e.g., ONL-2026-001">
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">OR Nickname</label>
-                                    <input type="text" class="form-control form-control-lg" 
-                                           name="nickname" value="<?php echo htmlspecialchars($nickname); ?>"
-                                           placeholder="e.g., Kanor">
-                                </div>
-                            </div>
-                            <div class="mt-3">
-                                <button type="submit" class="btn btn-primary btn-lg w-100">
-                                    <i class="fas fa-search"></i> Track Order
-                                </button>
-                                <hr />
-                                <a href="menu.php" class="btn btn-secondary btn-lg w-100">
-                                    <i class="fas fa-list"></i> Back to Menu
-                                </a>
-                            </div>
-                        </form>
-                        
-                        <?php if ($searchError): ?>
-                            <div class="alert alert-danger mt-3">
-                                <i class="fas fa-exclamation-triangle"></i> <?php echo $searchError; ?>
-                            </div>
-                        <?php endif; ?>
-                        
-                        <!-- QR Code Info -->
-                        <div class="qr-section mt-4">
-                            <h4><i class="fas fa-qrcode"></i> Quick Access</h4>
-                            <p>Scan QR code at your table to track order instantly</p>
-                            <div id="qrcode"></div>
-                            <small class="text-muted">Point your camera at the QR code on your table</small>
-                        </div>
-                    </div>
+                    <!-- ... keep your existing search form ... -->
                 <?php else: ?>
                     <!-- Order Found - Show Status -->
                     <div class="order-found">
@@ -335,9 +313,9 @@ $message = "Please enter an order number, PIN, or nickname to track your order."
                             <?php
                             $statusSteps = [
                                 'pending' => ['icon' => 'fas fa-clock', 'label' => 'Order Received', 'description' => 'We have received your order'],
-                                'preparing' => ['icon' => 'fas fa-utensils', 'label' => 'Preparing', 'description' => 'Kitchen is preparing your food'],
+                                'preparing' => ['icon' => 'fas fa-utensils', 'label' => 'Preparing', 'description' => 'We are preparing your food'],
                                 'ready' => ['icon' => 'fas fa-check-circle', 'label' => 'Ready', 'description' => 'Your order is ready for pickup'],
-                                'completed' => ['icon' => 'fas fa-box', 'label' => 'Completed', 'description' => 'Order has been served']
+                                'completed' => ['icon' => 'fas fa-box', 'label' => 'Completed', 'description' => 'Order has been served. Thank You.']
                             ];
                             
                             $currentStatus = $order['display_status'] ?? $order['status'];
@@ -375,93 +353,111 @@ $message = "Please enter an order number, PIN, or nickname to track your order."
                         <!-- Order Details -->
                         <div class="order-items">
                             <h5><i class="fas fa-receipt"></i> Order Details</h5>
-                            <table class="table">
-                                <thead>
-    <tr>
-        <th>Item</th>
-        <th>Qty</th>
-        <th class="text-end">Price</th>
-        <th>Status</th>
-    </tr>
-</thead>
-<tbody>
-    <?php foreach ($orderItems as $item): ?>
-        <tr>
-            <td>
-                <div>
-                    <strong><?php echo htmlspecialchars($item['name']); ?></strong>
-                    <div class="text-muted small">₱<?php echo number_format($item['unit_price'], 2); ?> each</div>
-                    
-                    <?php if (!empty($item['addons'])): ?>
-    <div class="addons-list mt-2">
-        <?php foreach ($item['addons'] as $addon): ?>
-            <?php if (is_array($addon) && isset($addon['name'])): ?>
-                <div class="addon-item">
-                    <span class="name">
-                        • <?php echo htmlspecialchars($addon['name']); ?> 
-                        <span class="text-muted">(x<?php echo $addon['quantity']; ?>)</span>
-                    </span>
-                    <span class="price">
-                        +₱<?php echo number_format($addon['price'], 2); ?>
-                    </span>
-                </div>
-            <?php endif; ?>
-        <?php endforeach; ?>
-    </div>
-<?php endif; ?> 
-                    
-                    <?php if ($item['special_request']): ?>
-                        <div class="mt-2">
-                            <small class="text-warning">
-                                <i class="fas fa-sticky-note"></i>
-                                <?php echo htmlspecialchars($item['special_request']); ?>
-                            </small>
+                            <div class="table-responsive"> 
+                                <table class="table align-middle w-100"> 
+                                    <thead class="text text-light bg-dark"> 
+                                        <tr> 
+                                            <th>Item</th> 
+                                            <th>Qty</th> 
+                                            <th class="text-end">Price</th> 
+                                            <!-- <th>Status</th>  -->
+                                        </tr> 
+                                    </thead> 
+                                    <tbody>
+                                        <?php foreach ($orderItems as $item): ?>
+                                            <tr>
+                                                <td>
+                                                    <div>
+                                                        <strong><?php echo htmlspecialchars($item['name']); ?></strong>
+                                                        <div class="text-muted small">₱<?php echo number_format($item['unit_price'], 2); ?> each</div>
+                                                        
+                                                        <?php if (!empty($item['addons'])): ?>
+                                                            <div class="addons-list mt-2">
+                                                                <?php foreach ($item['addons'] as $addon): ?>
+                                                                    <?php if (is_array($addon) && isset($addon['name'])): ?>
+                                                                        <div class="addon-item">
+                                                                            <span class="name">
+                                                                                • <?php echo htmlspecialchars($addon['name']); ?> 
+                                                                                <span class="text-muted">(x<?php echo $addon['quantity']; ?>)</span>
+                                                                            </span>
+                                                                            <span class="price">
+                                                                                +₱<?php echo number_format($addon['price'], 2); ?>
+                                                                            </span>
+                                                                        </div>
+                                                                    <?php endif; ?>
+                                                                <?php endforeach; ?>
+                                                            </div>
+                                                        <?php endif; ?> 
+                                                        
+                                                        <?php if ($item['special_request']): ?>
+                                                            <div class="mt-2">
+                                                                <small class="text-warning">
+                                                                    <i class="fas fa-sticky-note"></i>
+                                                                    <?php echo htmlspecialchars($item['special_request']); ?>
+                                                                </small>
+                                                            </div>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </td>
+                                                <td>x<?php echo $item['quantity']; ?></td>
+                                                <td class="text-end">
+                                                    <strong>₱<?php echo number_format($item['item_total'] ?? $item['total_price'], 2); ?></strong>
+                                                </td>
+                                                
+                                            </tr>
+                                            <tr>
+                                                <td colspan="3" class="w-100 text-align-center text-dark opacity-50">
+                                                    <span class="w-100 badge 
+                                                        <?php 
+                                                            if ($item['item_status'] == 'pending') echo 'bg-warning';
+                                                            elseif ($item['item_status'] == 'preparing') echo 'bg-info';
+                                                            elseif ($item['item_status'] == 'ready') echo 'bg-success';
+                                                            elseif ($item['item_status'] == 'completed') echo 'bg-success';
+                                                            else echo 'bg-secondary';
+                                                        ?>">
+                                                        <?php echo ucfirst($item['item_status']); ?>
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td colspan="2" class="text-end"><strong>Subtotal (with addons):</strong></td>
+                                            <td><strong>₱<?php echo number_format($recalculatedSubtotal, 2); ?></strong></td>
+                                        </tr>
+                                        <?php if ($order['tax_amount'] > 0): ?>
+                                            <tr>
+                                                <td colspan="2" class="text-end">Tax:</td>
+                                                <td>₱<?php echo number_format($order['tax_amount'], 2); ?></td>
+                                            </tr>
+                                        <?php endif; ?>
+                                        <?php if ($order['discount_amount'] > 0): ?>
+                                            <tr>
+                                                <td colspan="2" class="text-end">Discount:</td>
+                                                <td class="text-danger">-₱<?php echo number_format($order['discount_amount'], 2); ?></td>
+                                            </tr>
+                                        <?php endif; ?>
+                                        <tr>
+                                            <th colspan="2" class="text-end">Total (with addons):</th>
+                                            <th>₱<?php echo number_format($recalculatedTotal, 2); ?></th>
+                                        </tr>
+                                        <!-- Optional: Show original totals for comparison -->
+                                        <?php if (abs($recalculatedSubtotal - $order['subtotal']) > 0.01): ?>
+                                            <tr>
+                                                <td colspan="3" class="text-muted small">
+                                                    <i class="fas fa-info-circle"></i> 
+                                                    Note: Original subtotal was ₱<?php echo number_format($order['subtotal'], 2); ?> 
+                                                    (Addons: +₱<?php echo number_format($recalculatedSubtotal - $order['subtotal'], 2); ?>)
+                                                </td>
+                                            </tr>
+                                        <?php endif; ?>
+                                    </tfoot>
+                                </table>
+                            </div>
                         </div>
-                    <?php endif; ?>
-                </div>
-            </td>
-            <td><?php echo $item['quantity']; ?></td>
-            <td class="text-end">
-                <strong>₱<?php echo number_format($item['item_total'] ?? $item['total_price'], 2); ?></strong>
-            </td>
-            <td>
-                <span class="badge 
-                    <?php 
-                        if ($item['item_status'] == 'pending') echo 'bg-warning';
-                        elseif ($item['item_status'] == 'preparing') echo 'bg-info';
-                        elseif ($item['item_status'] == 'ready') echo 'bg-success';
-                        else echo 'bg-secondary';
-                    ?>">
-                    <?php echo ucfirst($item['item_status']); ?>
-                </span>
-            </td>
-        </tr>
-    <?php endforeach; ?>
-</tbody>
-                                <tfoot>
-    <tr>
-        <td colspan="3" class="text-end"><strong>Subtotal:</strong></td>
-        <td><strong>₱<?php echo number_format($order['subtotal'], 2); ?></strong></td>
-    </tr>
-    <?php if ($order['tax_amount'] > 0): ?>
-    <tr>
-        <td colspan="2" class="text-end">Tax:</td>
-        <td>₱<?php echo number_format($order['tax_amount'], 2); ?></td>
-    </tr>
-    <?php endif; ?>
-    <?php if ($order['discount_amount'] > 0): ?>
-    <tr>
-        <td colspan="2" class="text-end">Discount:</td>
-        <td class="text-danger">-₱<?php echo number_format($order['discount_amount'], 2); ?></td>
-    </tr>
-    <?php endif; ?>
-    <tr>
-        <th colspan="3" class="text-end">Total:</th>
-        <th>₱<?php echo number_format($order['total_amount'], 2); ?></th>
-    </tr>
-</tfoot>
-                            </table>
-                        </div>
+                        
+                        <!-- ... rest of your existing code ... -->
                         
                         <!-- Estimated Time -->
                         <?php if ($order['estimated_time']): ?>
@@ -480,17 +476,17 @@ $message = "Please enter an order number, PIN, or nickname to track your order."
                         <!-- Auto-refresh notice -->
                         <div class="alert alert-info mt-3">
                             <i class="fas fa-sync-alt"></i>
-                            This page auto-refreshes every 30 seconds. Last updated: 
+                            This page auto-refreshes every Actions taken. Last updated: 
                             <span id="last-updated"><?php echo date('h:i:s A'); ?></span>
                         </div>
                         
                         <!-- Actions -->
                         <div class="text-center mt-4">
-                            <a href="order-status.php" class="btn btn-outline-primary">
+                            <!-- <a href="#" class="btn btn-outline-primary">
                                 <i class="fas fa-search"></i> Track Another Order
-                            </a>
-                            <a href="menu.php" target="_blank" class="btn btn-outline-secondary">
-                                <i class="fas fa-tv"></i> Back to Menu
+                            </a> -->
+                            <a href="menu.php" class="btn btn-outline-secondary">
+                                <i class="fas fa-cart-plus"></i> Back to Menu
                             </a>
                             <!-- <button onclick="window.print()" class="btn btn-outline-success">
                                 <i class="fas fa-print"></i> Print Receipt
