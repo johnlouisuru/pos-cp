@@ -1093,6 +1093,7 @@ if (!empty($_SESSION['cart'])) {
     margin: 0;
 }
 
+/* Add to your existing carousel CSS */
 .carousel-track {
     display: flex;
     margin: 0;
@@ -1100,7 +1101,18 @@ if (!empty($_SESSION['cart'])) {
     list-style: none;
     position: relative;
     transition: transform 0.5s ease;
-    width: 100000px; /* Large enough to hold all items */
+    width: 100000px;
+    /* Improve touch experience */
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    touch-action: pan-y pinch-zoom;
+}
+
+.carousel-track.dragging {
+    cursor: grabbing;
+    transition: none;
 }
 
 .carousel-item {
@@ -1116,9 +1128,44 @@ if (!empty($_SESSION['cart'])) {
     overflow: hidden;
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
     position: relative;
-    /* Reset all positioning */
     float: none;
     display: block;
+    /* Improve touch experience */
+    cursor: grab;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.carousel-item:active {
+    cursor: grabbing;
+}
+
+/* Add visual feedback during drag */
+.carousel-track:active {
+    cursor: grabbing;
+}
+
+/* Improve touch targets on mobile */
+@media (max-width: 768px) {
+    .carousel-nav {
+        width: 44px;
+        height: 44px;
+        min-width: 44px; /* Minimum touch target size */
+        min-height: 44px;
+    }
+    
+    .carousel-item {
+        cursor: pointer;
+    }
+}
+
+/* Prevent text selection during drag */
+.carousel-track,
+.carousel-item {
+    -webkit-user-drag: none;
+    -khtml-user-drag: none;
+    -moz-user-drag: none;
+    -o-user-drag: none;
+    user-drag: none;
 }
 
 .carousel-item:hover {
@@ -1339,7 +1386,33 @@ if (!empty($_SESSION['cart'])) {
 .highlight-product .product-card {
     animation: highlightPulse 1s ease-in-out;
 }
+/* Add swipe hint for mobile */
+@media (max-width: 768px) {
+    .bestseller-carousel::before {
+        content: '← Swipe →';
+        position: absolute;
+        top: -25px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 12px;
+        color: #8B4513;
+        opacity: 0.7;
+        font-weight: 600;
+        z-index: 2;
+        animation: swipeHint 2s infinite;
+    }
+}
 
+@keyframes swipeHint {
+    0%, 100% {
+        opacity: 0.3;
+        transform: translateX(-50%) scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: translateX(-50%) scale(1.05);
+    }
+}
 
 
 </style>
@@ -1421,7 +1494,8 @@ if (!empty($_SESSION['cart'])) {
                     
                     <div class="carousel-item-image">
                         <?php if(empty($product['image_url'])): ?>
-                            <i class="fas fa-<?php echo getProductIcon($product['name']); ?>"></i>
+                            <!-- <i class="fas fa-<?php echo getProductIcon($product['name']); ?>"></i>  -->
+                            <img src="../uploads/samara.jpg" alt="<?php echo htmlspecialchars($product['name']); ?>">
                         <?php else: ?>
                             <img src="../<?php echo $product['image_url']; ?>" alt="<?php echo htmlspecialchars($product['name']); ?>">
                         <?php endif; ?>
@@ -1494,7 +1568,8 @@ if (!empty($_SESSION['cart'])) {
                         <div class="product-card h-100 d-flex flex-column">
                             <div class="product-image">
                                 <?php if(empty($product['image_url'])): ?>
-                                    <i class="fas fa-<?php echo getProductIcon($product['name']); ?> fa-3x" style="color: #8B4513;"></i>
+                                <img src="../uploads/samara.jpg" alt="<?php echo htmlspecialchars($product['name']); ?>">
+                                    <!-- <i class="fas fa-<?php echo getProductIcon($product['name']); ?> fa-3x" style="color: #8B4513;"></i> -->
                                 <?php else: ?>
                                     <img src="../<?php echo $product['image_url']; ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" class="img-fluid">
                                 <?php endif; ?>
@@ -1707,10 +1782,6 @@ if (!empty($_SESSION['cart'])) {
     let cartRefreshTimeout = null;
     let isRefreshing = false;
     
-    // Carousel variables
-    let currentCarouselIndex = 0;
-    let carouselAutoplayInterval = null;
-    let carouselItemsPerView = 3;
     
     // ========== UTILITY FUNCTIONS ==========
     function escapeHtml(text) {
@@ -1727,141 +1798,332 @@ if (!empty($_SESSION['cart'])) {
         "timeOut": "3000"
     };
     
-    // ========== CAROUSEL FUNCTIONS ==========
-    let carouselItems = [];
-    let carouselTrack = null;
-    let isAnimating = false;
-    function initCarousel() {
-        const track = document.getElementById('carouselTrack');
-        if (!track) return;
-        
-        updateCarouselItemsPerView();
-        
-        // Create indicators
-        const indicators = document.getElementById('carouselIndicators');
-        const items = track.querySelectorAll('.carousel-item');
-        const totalPages = Math.ceil(items.length / carouselItemsPerView);
-        
-        if (indicators) {
-            indicators.innerHTML = '';
-            for (let i = 0; i < totalPages; i++) {
-                const indicator = document.createElement('div');
-                indicator.className = 'carousel-indicator';
-                if (i === 0) indicator.classList.add('active');
-                indicator.onclick = () => goToCarouselPage(i);
-                indicators.appendChild(indicator);
-            }
-        }
-        
-        updateCarousel();
-        startCarouselAutoplay();
-        
-        // Pause on hover
-        const carousel = document.getElementById('bestsellerCarousel');
-        if (carousel) {
-            carousel.addEventListener('mouseenter', stopCarouselAutoplay);
-            carousel.addEventListener('mouseleave', startCarouselAutoplay);
+ // ========== CAROUSEL FUNCTIONS ==========
+let currentCarouselIndex = 0;
+let carouselAutoplayInterval = null;
+let carouselItemsPerView = 3;
+let carouselItems = [];
+let carouselTrack = null;
+let carouselContainer = null;
+
+// Touch/swipe variables
+let touchStartX = 0;
+let touchEndX = 0;
+let isDragging = false;
+let dragStartX = 0;
+let dragCurrentX = 0;
+
+function initCarousel() {
+    console.log('Initializing carousel...');
+    
+    carouselContainer = document.getElementById('bestsellerCarousel');
+    carouselTrack = document.getElementById('carouselTrack');
+    
+    if (!carouselTrack || !carouselContainer) {
+        console.error('Carousel elements not found!');
+        return;
+    }
+    
+    carouselItems = Array.from(carouselTrack.querySelectorAll('.carousel-item'));
+    if (carouselItems.length === 0) {
+        console.error('No carousel items found!');
+        return;
+    }
+    
+    console.log(`Found ${carouselItems.length} carousel items`);
+    
+    updateCarouselItemsPerView();
+    
+    // Create indicators
+    const indicators = document.getElementById('carouselIndicators');
+    const totalPages = Math.ceil(carouselItems.length / carouselItemsPerView);
+    
+    if (indicators) {
+        indicators.innerHTML = '';
+        for (let i = 0; i < totalPages; i++) {
+            const indicator = document.createElement('div');
+            indicator.className = 'carousel-indicator';
+            if (i === 0) indicator.classList.add('active');
+            indicator.onclick = () => goToCarouselPage(i);
+            indicators.appendChild(indicator);
         }
     }
     
-    function updateCarouselItemsPerView() {
-        const width = window.innerWidth;
-        if (width < 576) {
-            carouselItemsPerView = 1;
-        } else if (width < 768) {
-            carouselItemsPerView = 2;
-        } else if (width < 992) {
-            carouselItemsPerView = 3;
+    // Set initial position
+    currentCarouselIndex = 0;
+    updateCarousel();
+    
+    // Add touch/swipe support
+    addTouchSupport();
+    
+    // Start autoplay
+    startCarouselAutoplay();
+    
+    // Pause on hover
+    carouselContainer.addEventListener('mouseenter', stopCarouselAutoplay);
+    carouselContainer.addEventListener('mouseleave', startCarouselAutoplay);
+    
+    console.log('Carousel initialized successfully');
+}
+
+function addTouchSupport() {
+    if (!carouselTrack) return;
+    
+    // Touch events for mobile
+    carouselTrack.addEventListener('touchstart', handleTouchStart, { passive: true });
+    carouselTrack.addEventListener('touchmove', handleTouchMove, { passive: false });
+    carouselTrack.addEventListener('touchend', handleTouchEnd);
+    
+    // Mouse events for desktop dragging
+    carouselTrack.addEventListener('mousedown', handleMouseDown);
+    carouselTrack.addEventListener('mousemove', handleMouseMove);
+    carouselTrack.addEventListener('mouseup', handleMouseUp);
+    carouselTrack.addEventListener('mouseleave', handleMouseLeave);
+    
+    // Prevent default behavior for arrow buttons
+    const prevBtn = document.querySelector('.carousel-nav-prev');
+    const nextBtn = document.querySelector('.carousel-nav-next');
+    
+    if (prevBtn) {
+        prevBtn.addEventListener('touchstart', (e) => e.stopPropagation());
+        prevBtn.addEventListener('mousedown', (e) => e.stopPropagation());
+    }
+    
+    if (nextBtn) {
+        nextBtn.addEventListener('touchstart', (e) => e.stopPropagation());
+        nextBtn.addEventListener('mousedown', (e) => e.stopPropagation());
+    }
+}
+
+function handleTouchStart(e) {
+    touchStartX = e.touches[0].clientX;
+    touchEndX = touchStartX;
+    stopCarouselAutoplay();
+}
+
+function handleTouchMove(e) {
+    if (!touchStartX) return;
+    
+    touchEndX = e.touches[0].clientX;
+    e.preventDefault(); // Prevent scrolling while swiping
+    
+    const diff = touchStartX - touchEndX;
+    applyDragTransform(diff);
+}
+
+function handleTouchEnd() {
+    if (!touchStartX) return;
+    
+    const diff = touchStartX - touchEndX;
+    const threshold = 50; // Minimum swipe distance
+    
+    if (Math.abs(diff) > threshold) {
+        if (diff > 0) {
+            // Swiped left - go to next
+            carouselNext();
         } else {
-            carouselItemsPerView = 4;
+            // Swiped right - go to previous
+            carouselPrev();
         }
-    }
-    
-    function updateCarousel() {
-        const track = document.getElementById('carouselTrack');
-        const indicators = document.querySelectorAll('.carousel-indicator');
-        
-        if (!track) return;
-        
-        const items = track.querySelectorAll('.carousel-item');
-        if (items.length === 0) return;
-        
-        const itemWidth = items[0].offsetWidth;
-        const gap = 15;
-        const totalPages = Math.ceil(items.length / carouselItemsPerView);
-        
-        // Ensure currentCarouselIndex stays within bounds
-        if (currentCarouselIndex >= totalPages) {
-            currentCarouselIndex = totalPages - 1;
-        }
-        if (currentCarouselIndex < 0) {
-            currentCarouselIndex = 0;
-        }
-        
-        // Calculate the offset
-        const offset = currentCarouselIndex * (itemWidth + gap) * carouselItemsPerView;
-        track.style.transform = `translateX(-${offset}px)`;
-        
-        // Update indicators
-        const currentPage = Math.floor(currentCarouselIndex);
-        indicators.forEach((indicator, index) => {
-            indicator.classList.toggle('active', index === currentPage);
-        });
-    }
-    
-    function carouselNext() {
-        const track = document.getElementById('carouselTrack');
-        if (!track) return;
-        
-        const items = track.querySelectorAll('.carousel-item');
-        const totalPages = Math.ceil(items.length / carouselItemsPerView);
-        
-        currentCarouselIndex = (currentCarouselIndex + 1) % totalPages;
+    } else {
+        // Reset position if not a significant swipe
         updateCarousel();
     }
     
-    function carouselPrev() {
-        const track = document.getElementById('carouselTrack');
-        if (!track) return;
-        
-        const items = track.querySelectorAll('.carousel-item');
-        const totalPages = Math.ceil(items.length / carouselItemsPerView);
-        
-        currentCarouselIndex = (currentCarouselIndex - 1 + totalPages) % totalPages;
-        updateCarousel();
-    }
+    // Reset
+    touchStartX = 0;
+    touchEndX = 0;
     
-    function goToCarouselPage(pageIndex) {
-        currentCarouselIndex = pageIndex;
-        updateCarousel();
-    }
+    // Restart autoplay
+    setTimeout(startCarouselAutoplay, 3000);
+}
+
+function handleMouseDown(e) {
+    isDragging = true;
+    dragStartX = e.clientX;
+    dragCurrentX = dragStartX;
+    stopCarouselAutoplay();
     
-    function startCarouselAutoplay() {
-        stopCarouselAutoplay();
-        carouselAutoplayInterval = setInterval(carouselNext, 4000);
-    }
+    carouselTrack.style.cursor = 'grabbing';
+}
+
+function handleMouseMove(e) {
+    if (!isDragging) return;
     
-    function stopCarouselAutoplay() {
-        if (carouselAutoplayInterval) {
-            clearInterval(carouselAutoplayInterval);
-            carouselAutoplayInterval = null;
-        }
-    }
+    dragCurrentX = e.clientX;
+    const diff = dragStartX - dragCurrentX;
     
-    function handleCarouselItemClick(productId, hasAddons) {
-        if (hasAddons) {
-            showAddonsModal(productId);
+    applyDragTransform(diff);
+}
+
+function handleMouseUp() {
+    if (!isDragging) return;
+    
+    const diff = dragStartX - dragCurrentX;
+    const threshold = 50; // Minimum drag distance
+    
+    if (Math.abs(diff) > threshold) {
+        if (diff > 0) {
+            // Dragged left - go to next
+            carouselNext();
         } else {
-            const productElement = document.querySelector(`.product-item[data-id="${productId}"]`);
-            if (productElement) {
-                productElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                productElement.classList.add('highlight-product');
-                setTimeout(() => {
-                    productElement.classList.remove('highlight-product');
-                }, 2000);
-            }
+            // Dragged right - go to previous
+            carouselPrev();
+        }
+    } else {
+        // Reset position if not a significant drag
+        updateCarousel();
+    }
+    
+    // Reset
+    isDragging = false;
+    dragStartX = 0;
+    dragCurrentX = 0;
+    carouselTrack.style.cursor = 'grab';
+    
+    // Restart autoplay
+    setTimeout(startCarouselAutoplay, 3000);
+}
+
+function handleMouseLeave() {
+    if (isDragging) {
+        handleMouseUp();
+    }
+}
+
+function applyDragTransform(diff) {
+    if (!carouselTrack || carouselItems.length === 0) return;
+    
+    const itemWidth = carouselItems[0].offsetWidth;
+    const gap = 15;
+    const baseOffset = currentCarouselIndex * (itemWidth + gap) * carouselItemsPerView;
+    
+    // Apply transform with drag offset
+    carouselTrack.style.transform = `translateX(calc(-${baseOffset}px - ${diff}px))`;
+    carouselTrack.style.transition = 'none';
+}
+
+function updateCarouselItemsPerView() {
+    const width = window.innerWidth;
+    if (width < 576) {
+        carouselItemsPerView = 1;
+    } else if (width < 768) {
+        carouselItemsPerView = 2;
+    } else if (width < 992) {
+        carouselItemsPerView = 3;
+    } else {
+        carouselItemsPerView = 4;
+    }
+    
+    console.log(`Carousel items per view: ${carouselItemsPerView} (screen width: ${width}px)`);
+}
+
+function updateCarousel() {
+    if (!carouselTrack || carouselItems.length === 0) return;
+    
+    const itemWidth = carouselItems[0].offsetWidth;
+    const gap = 15;
+    const totalPages = Math.ceil(carouselItems.length / carouselItemsPerView);
+    
+    // Ensure currentCarouselIndex stays within bounds
+    if (currentCarouselIndex >= totalPages) {
+        currentCarouselIndex = totalPages - 1;
+    }
+    if (currentCarouselIndex < 0) {
+        currentCarouselIndex = 0;
+    }
+    
+    const offset = currentCarouselIndex * (itemWidth + gap) * carouselItemsPerView;
+    
+    // Apply transition
+    carouselTrack.style.transition = 'transform 0.5s ease';
+    carouselTrack.style.transform = `translateX(-${offset}px)`;
+    
+    // Update indicators
+    updateIndicators();
+}
+
+function updateIndicators() {
+    const indicators = document.querySelectorAll('.carousel-indicator');
+    if (indicators.length === 0) return;
+    
+    const totalPages = Math.ceil(carouselItems.length / carouselItemsPerView);
+    const currentPage = Math.min(currentCarouselIndex, totalPages - 1);
+    
+    indicators.forEach((indicator, index) => {
+        indicator.classList.toggle('active', index === currentPage);
+    });
+}
+
+function carouselNext() {
+    console.log('Carousel next called');
+    
+    const totalPages = Math.ceil(carouselItems.length / carouselItemsPerView);
+    
+    if (currentCarouselIndex < totalPages - 1) {
+        currentCarouselIndex++;
+    } else {
+        currentCarouselIndex = 0; // Loop back to start
+    }
+    
+    updateCarousel();
+}
+
+function carouselPrev() {
+    console.log('Carousel prev called');
+    
+    const totalPages = Math.ceil(carouselItems.length / carouselItemsPerView);
+    
+    if (currentCarouselIndex > 0) {
+        currentCarouselIndex--;
+    } else {
+        currentCarouselIndex = totalPages - 1; // Loop to end
+    }
+    
+    updateCarousel();
+}
+
+function goToCarouselPage(pageIndex) {
+    const totalPages = Math.ceil(carouselItems.length / carouselItemsPerView);
+    
+    if (pageIndex < 0) pageIndex = 0;
+    if (pageIndex >= totalPages) pageIndex = totalPages - 1;
+    
+    currentCarouselIndex = pageIndex;
+    updateCarousel();
+}
+
+function startCarouselAutoplay() {
+    stopCarouselAutoplay();
+    carouselAutoplayInterval = setInterval(carouselNext, 4000);
+}
+
+function stopCarouselAutoplay() {
+    if (carouselAutoplayInterval) {
+        clearInterval(carouselAutoplayInterval);
+        carouselAutoplayInterval = null;
+    }
+}
+
+function handleCarouselItemClick(productId, hasAddons) {
+    // Don't trigger click if user was dragging/swiping
+    if (isDragging || Math.abs(touchStartX - touchEndX) > 10) {
+        return;
+    }
+    
+    if (hasAddons) {
+        showAddonsModal(productId);
+    } else {
+        const productElement = document.querySelector(`.product-item[data-id="${productId}"]`);
+        if (productElement) {
+            productElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            productElement.classList.add('highlight-product');
+            setTimeout(() => {
+                productElement.classList.remove('highlight-product');
+            }, 2000);
         }
     }
+}
     
     // ========== MODAL FUNCTIONS ==========
     function showAddonsModal(productId) {
@@ -2453,8 +2715,14 @@ if (!empty($_SESSION['cart'])) {
         const cartCount = <?php echo $cartCount; ?>;
         updateCheckoutButtons(cartCount);
         
-        // Initialize carousel
-        setTimeout(initCarousel, 300);
+            // Initialize carousel after a short delay to ensure DOM is ready
+    setTimeout(function() {
+        if (document.querySelector('#carouselTrack')) {
+            initCarousel();
+        } else {
+            console.log('Carousel track not found on initial load');
+        }
+    }, 500);
         
         // Close cart when clicking outside
         document.addEventListener('click', function(event) {
@@ -2550,15 +2818,25 @@ if (!empty($_SESSION['cart'])) {
 
     });
     
-    // Handle window resize for carousel
-    let resizeTimeout;
-    window.addEventListener('resize', function() {
-        clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(function() {
-            updateCarouselItemsPerView();
+  // Handle window resize for carousel
+let resizeTimeout;
+window.addEventListener('resize', function() {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(function() {
+        console.log('Window resized, updating carousel...');
+        
+        const oldItemsPerView = carouselItemsPerView;
+        updateCarouselItemsPerView();
+        
+        // Reinitialize if items per view changed
+        if (oldItemsPerView !== carouselItemsPerView) {
+            console.log(`Carousel items per view changed from ${oldItemsPerView} to ${carouselItemsPerView}`);
+            stopCarouselAutoplay();
             updateCarousel();
-        }, 250);
-    });
+            startCarouselAutoplay();
+        }
+    }, 250);
+});
     
     // Clean up intervals on page unload
     window.addEventListener('beforeunload', function() {
