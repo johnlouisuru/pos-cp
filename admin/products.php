@@ -605,7 +605,7 @@ function getProduct() {
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h4 class="mb-0"><i class="fas fa-boxes me-2"></i> Product List</h4>
                         <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addProductModal">
-                            <i class="fas fa-plus me-2"></i> Add New Product
+                            <i class="fas fa-plus me-2"></i> Add Product
                         </button>
                     </div>
                     <div class="card-body">
@@ -677,7 +677,10 @@ function getProduct() {
                                                  class="product-image">
                                             <?php else: ?>
                                             <div class="product-image bg-light d-flex align-items-center justify-content-center">
-                                                <i class="fas fa-image text-muted"></i>
+                                                <!-- <i class="fas fa-image text-muted"></i> -->
+                                                <img src="../uploads/samara.jpg" 
+                                                 alt="<?php echo htmlspecialchars($product['name']); ?>" 
+                                                 class="product-image">
                                             </div>
                                             <?php endif; ?>
                                         </td>
@@ -782,6 +785,14 @@ function getProduct() {
                                             <label for="productName" class="form-label">Product Name *</label>
                                             <input type="text" class="form-control" id="productName" name="name" required>
                                         </div>
+
+                                        <div class="mb-3">
+                                            <label for="productPrice" class="form-label">Selling Price *</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">₱</span>
+                                                <input type="number" class="form-control" id="productPrice" name="price" step="0.01" min="0" required>
+                                            </div>
+                                        </div>
                                         
                                         <div class="mb-3">
                                             <label for="productSKU" class="form-label">SKU (Optional)</label>
@@ -843,13 +854,13 @@ function getProduct() {
                             <div class="tab-pane fade" id="pricingStock">
                                 <div class="row">
                                     <div class="col-md-6">
-                                        <div class="mb-3">
+                                        <!-- <div class="mb-3">
                                             <label for="productPrice" class="form-label">Selling Price *</label>
                                             <div class="input-group">
                                                 <span class="input-group-text">₱</span>
                                                 <input type="number" class="form-control" id="productPrice" name="price" step="0.01" min="0" required>
                                             </div>
-                                        </div>
+                                        </div> -->
                                         
                                         <div class="mb-3">
                                             <label for="productCost" class="form-label">Cost Price (Optional)</label>
@@ -1048,7 +1059,7 @@ function getProduct() {
                             <div class="row mb-3">
                                 <div class="col-md-8">
                                     <select class="form-select" id="availableAddons">
-                                        <option value="">Select addon to assign...</option>
+                                        <option value="0">Select addon to assign...</option>
                                     </select>
                                 </div>
                                 <div class="col-md-4">
@@ -1186,6 +1197,7 @@ function getProduct() {
             // Validate required fields
             if (!formData.get('name') || !formData.get('category_id') || !formData.get('price')) {
                 showAlert('error', 'Please fill in all required fields');
+                alert('Please fill in all required fields');
                 resetButtonState('saveProductBtn', 'Save Product');
                 return;
             }
@@ -1325,6 +1337,14 @@ function getProduct() {
                                                 <label class="form-label">Product Name *</label>
                                                 <input type="text" class="form-control" name="name" value="${escapeHtml(product.name || '')}" required>
                                             </div>
+
+                                            <div class="mb-3">
+                                                <label class="form-label">Selling Price *</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">₱</span>
+                                                    <input type="number" class="form-control" name="price" value="${product.price || ''}" step="0.01" min="0" required>
+                                                </div>
+                                            </div>
                                             
                                             <div class="mb-3">
                                                 <label class="form-label">SKU (Optional)</label>
@@ -1399,13 +1419,7 @@ function getProduct() {
                                 <div class="tab-pane fade" id="editPricingStock">
                                     <div class="row">
                                         <div class="col-md-6">
-                                            <div class="mb-3">
-                                                <label class="form-label">Selling Price *</label>
-                                                <div class="input-group">
-                                                    <span class="input-group-text">₱</span>
-                                                    <input type="number" class="form-control" name="price" value="${product.price || ''}" step="0.01" min="0" required>
-                                                </div>
-                                            </div>
+                                            
                                             
                                             <div class="mb-3">
                                                 <label class="form-label">Cost Price (Optional)</label>
@@ -1863,7 +1877,7 @@ function getProduct() {
     function assignAddonToProduct() {
         const addonId = $('#availableAddons').val();
         
-        if (!addonId) {
+        if (!addonId || addonId == "0") {
             showAlert('warning', 'Please select an addon first');
             return;
         }

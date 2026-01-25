@@ -25,6 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ");
             $stmt->execute([$name, $description, $display_order, $icon_class, $color_code]);
         }
+        $_SESSION['last_added_category'] = 'New Category ['.$name.'] added successfully.';
     } elseif ($action === 'update_category') {
         $id = $_POST['id'] ?? 0;
         $name = $_POST['name'] ?? '';
@@ -43,6 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ");
             $stmt->execute([$name, $description, $display_order, $icon_class, $color_code, $is_active, $id]);
         }
+        $_SESSION['last_added_category'] = 'Category ['.$name.'] updated successfully.';
     } elseif ($action === 'delete_category') {
         $id = $_POST['id'] ?? 0;
         
@@ -59,6 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pdo->prepare("DELETE FROM categories WHERE id = ?")->execute([$id]);
             }
         }
+        $_SESSION['last_deleted_category'] = 'Category deleted successfully.';
     }
     
     header('Location: categories.php');
@@ -185,6 +188,29 @@ $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <!-- Add Category Form -->
             <div class="col-md-4">
                 <div class="card">
+                <?php 
+                        if(isset($_SESSION['last_added_category'])) {
+                            echo '<div class="alert alert-success alert-dismissible fade show m-3" role="alert">'
+                                .htmlspecialchars($_SESSION['last_added_category']).
+                                '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>';
+                            unset($_SESSION['last_added_category']);
+                        }
+                        if(isset($_SESSION['last_deleted_category'])) {
+                            echo '<div class="alert alert-success alert-dismissible fade show m-3" role="alert">'
+                                .htmlspecialchars($_SESSION['last_deleted_category']).
+                                '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>';
+                            unset($_SESSION['last_deleted_category']);
+                        }
+                        if(isset($_SESSION['last_updated_category'])) {
+                            echo '<div class="alert alert-success alert-dismissible fade show m-3" role="alert">'
+                                .htmlspecialchars($_SESSION['last_updated_category']).
+                                '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>';
+                            unset($_SESSION['last_updated_category']);
+                        }
+                ?>
                     <div class="card-header">
                         <h5 class="mb-0">
                             <i class="fas fa-plus-circle me-2"></i>
