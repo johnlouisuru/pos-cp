@@ -97,7 +97,7 @@ function createProduct() {
             $_POST['category_id'] ?? null,
             !empty($_POST['sku']) ? $_POST['sku'] : null,
             $_POST['name'],
-            $_POST['description'] ?? null,
+            $_POST['description'] ? $_POST['description'] : null,
             $_POST['price'],
             !empty($_POST['cost']) ? $_POST['cost'] : null,  // ✅ Fixed
             $_POST['stock'] ?? 0,
@@ -106,7 +106,7 @@ function createProduct() {
             isset($_POST['is_available']) ? 1 : 0,
             isset($_POST['is_popular']) ? 1 : 0,
             isset($_POST['has_addons']) ? 1 : 0,
-            $_POST['preparation_time'] ?? null,
+            $_POST['preparation_time'] ? $_POST['preparation_time'] : null,
             !empty($_POST['calories']) ? $_POST['calories'] : null,  // Also fixed for consistency
             $_POST['display_order'] ?? 0,
             !empty($_POST['station_id']) ? $_POST['station_id'] : null  // Also fixed (better than ?: null)
