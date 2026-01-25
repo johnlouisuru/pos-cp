@@ -12,7 +12,7 @@ if(isset($_SESSION['last_order']['order_number'])){
     $existing_order_handle = $_SESSION['last_order']['order_number'];
 }
 
-// Get all active categories with products
+// Get all active categories WITH products
 $sql = "
     SELECT c.*, 
            COUNT(p.id) as product_count,
@@ -21,6 +21,7 @@ $sql = "
     LEFT JOIN products p ON c.id = p.category_id AND p.is_available = 1
     WHERE c.is_active = 1
     GROUP BY c.id
+    HAVING COUNT(p.id) > 0  -- Only categories with products
     ORDER BY c.display_order
 ";
 
@@ -1802,10 +1803,14 @@ background: linear-gradient(90deg, rgba(207, 207, 159, 1) 0%, rgba(214, 214, 161
     
 
     <!-- Products Grid -->
-    <main class="container products-container py-3">
-        <div id="productsGrid">
-            <?php foreach ($categories as $category): ?>
-            <?php if (!empty($productsByCategory[$category['id']])): ?>
+<main class="container products-container py-3">
+    <div id="productsGrid">
+        <?php 
+        $hasAnyProducts = false;
+        foreach ($categories as $category): 
+            if (!empty($productsByCategory[$category['id']])):
+                $hasAnyProducts = true;
+        ?>
             <div class="category-section mb-4" data-category="<?php echo $category['id']; ?>">
                 <h4 class="category-title">
                     <?php echo htmlspecialchars($category['name']); ?>
@@ -1894,28 +1899,24 @@ background: linear-gradient(90deg, rgba(207, 207, 159, 1) 0%, rgba(214, 214, 161
         </div>
     </div>
 </div>
-                    <?php endforeach; ?>
+                     <?php endforeach; ?>
                 </div>
             </div>
-            <?php else: ?>
+        <?php 
+            endif;
+        endforeach; 
+        
+        // Show "Menu Coming Soon" only if NO categories have products
+        if (!$hasAnyProducts): 
+        ?>
             <div class="text-center py-5">
                 <i class="fas fa-utensils fa-4x text-muted mb-3"></i>
                 <h4 class="text-muted">Menu Coming Soon</h4>
                 <p class="text-muted">We're preparing our delicious offerings!</p>
             </div>
-            <?php endif; ?>
-            
-            <?php endforeach; ?>
-        </div>
-        
-        <?php if (empty($products)): ?>
-        <div class="text-center py-5">
-            <i class="fas fa-utensils fa-4x text-muted mb-3"></i>
-            <h4 class="text-muted">Menu Coming Soon</h4>
-            <p class="text-muted">We're preparing our delicious offerings!</p>
-        </div>
         <?php endif; ?>
-    </main>
+    </div>
+</main>
 
     <!-- Addons Modal -->
     <div class="addons-modal" id="addonsModal">
