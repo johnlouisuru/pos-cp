@@ -1853,7 +1853,7 @@ if (!empty($_SESSION['cart'])) {
                     
                     <?php if ($product['stock'] !== null): ?>
                     <span class="product-stock <?php echo $isAvailable ? 'in-stock' : 'out-of-stock'; ?>">
-                        <?php echo $isAvailable ? 'In Stock' : 'Out of Stock'; ?>
+                        <?php echo $isAvailable ? 'Available' : 'Not Available'; ?>
                     </span>
                     <?php endif; ?>
                 </div>
@@ -1897,7 +1897,14 @@ if (!empty($_SESSION['cart'])) {
                     <?php endforeach; ?>
                 </div>
             </div>
+            <?php else: ?>
+            <div class="text-center py-5">
+                <i class="fas fa-utensils fa-4x text-muted mb-3"></i>
+                <h4 class="text-muted">Menu Coming Soon</h4>
+                <p class="text-muted">We're preparing our delicious offerings!</p>
+            </div>
             <?php endif; ?>
+            
             <?php endforeach; ?>
         </div>
         
