@@ -24,7 +24,7 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SAMARA'S CAFFEINATED DREAMS</title>
-    <link rel="icon" type="image/png" href="../uploads/samara.jpg">
+    <link rel="icon" type="image/png" href="../<?= $_ENV['BUSINESS_ICON'] ?>">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
@@ -997,7 +997,7 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         <header class="pos-header">
             <div class="header-left">
             
-                <h5><img src="../uploads/samara.jpg" height="30px" width="30px" alt="Icon" class="header-icon me-2"> </h5>
+                <h5><img src="../<?= $_ENV['BUSINESS_ICON'] ?>" height="30px" width="30px" alt="Icon" class="header-icon me-2"> </h5>
             </div>
             <div class="header-right">
             <a class="mobile-btn fs-5" href="../display" id="mobile-checkout-btn">

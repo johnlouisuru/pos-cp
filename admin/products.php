@@ -678,7 +678,7 @@ function getProduct() {
                                             <?php else: ?>
                                             <div class="product-image bg-light d-flex align-items-center justify-content-center">
                                                 <!-- <i class="fas fa-image text-muted"></i> -->
-                                                <img src="../uploads/samara.jpg" 
+                                                <img src="../<?= $_ENV['BUSINESS_ICON'] ?>" 
                                                  alt="<?php echo htmlspecialchars($product['name']); ?>" 
                                                  class="product-image">
                                             </div>

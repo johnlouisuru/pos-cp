@@ -157,8 +157,8 @@ if (!empty($_SESSION['cart'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" href="../uploads/samara.jpg">
-    <title>SAMARA'S CAFFEINATED DREAMS</title>
+    <link rel="icon" type="image/png" href="../<?= $_ENV['BUSINESS_ICON'] ?>">
+    <title>CHILL PUFFS EST.</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/online-menu.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -1678,7 +1678,7 @@ if (!empty($_SESSION['cart'])) {
             <div class="row align-items-center">
                 <div class="col-6">
                     <div class="logo">
-                        <img src="../uploads/samara.jpg" height="30px" width="30px" alt="Icon" class="header-icon">
+                        <img src="../<?= $_ENV['BUSINESS_ICON'] ?>" height="30px" width="30px" alt="Icon" class="header-icon">
                         <span style="color:#3d2d31">SAMARA</span>
                     </div>
                 </div>
@@ -1730,7 +1730,7 @@ if (!empty($_SESSION['cart'])) {
                     <div class="carousel-item-image">
                         <?php if(empty($product['image_url'])): ?>
                             <!-- <i class="fas fa-<?php echo getProductIcon($product['name']); ?>"></i>  -->
-                            <img src="../uploads/samara.jpg" alt="<?php echo htmlspecialchars($product['name']); ?>">
+                            <img src="../<?= $_ENV['BUSINESS_ICON'] ?>" alt="<?php echo htmlspecialchars($product['name']); ?>">
                         <?php else: ?>
                             <img src="../<?php echo $product['image_url']; ?>" alt="<?php echo htmlspecialchars($product['name']); ?>">
                         <?php endif; ?>
@@ -1793,7 +1793,7 @@ background: linear-gradient(90deg, rgba(207, 207, 159, 1) 0%, rgba(214, 214, 161
                 <button class="category-tab px-3 py-2 rounded" 
                         data-category="<?php echo $category['id']; ?>"
                         style="white-space: nowrap; border-left: 4px solid <?php echo $category['color_code']; ?>">
-                    <i class="fas fa-<?php echo getCategoryIcon($category['name']); ?> me-1"></i>
+                    <i class="fas fa-<?php echo htmlspecialchars($category['icon_class']); ?> me-1"></i>
                     <?php echo htmlspecialchars($category['name']); ?>
                 </button>
                 <?php endforeach; ?>
@@ -1835,7 +1835,7 @@ background: linear-gradient(90deg, rgba(207, 207, 159, 1) 0%, rgba(214, 214, 161
         
         <div class="product-image">
             <?php if(empty($product['image_url'])): ?>
-            <img src="../uploads/samara.jpg" alt="<?php echo htmlspecialchars($product['name']); ?>">
+            <img src="../<?= $_ENV['BUSINESS_ICON'] ?>" alt="<?php echo htmlspecialchars($product['name']); ?>">
             <?php else: ?>
                 <img src="../<?php echo $product['image_url']; ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" class="img-fluid">
             <?php endif; ?>
@@ -1910,7 +1910,7 @@ background: linear-gradient(90deg, rgba(207, 207, 159, 1) 0%, rgba(214, 214, 161
         if (!$hasAnyProducts): 
         ?>
             <div class="text-center py-5">
-                <i class="fas fa-utensils fa-4x text-muted mb-3"></i>
+                <i class="fas fa-fire fa-4x text-muted mb-3"></i>
                 <h4 class="text-muted">Menu Coming Soon</h4>
                 <p class="text-muted">We're preparing our delicious offerings!</p>
             </div>

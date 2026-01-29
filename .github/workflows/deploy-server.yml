@@ -1,4 +1,4 @@
-name: Deploy POSV1 Module to cPanel via FTP
+name: Deploy POSV1 Chill Puff Module to cPanel via FTP
 
 on:
   push:
@@ -42,7 +42,7 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           # local-dir: ./           # Deploy only student folder
-          server-dir: /v1/myshop/  # Change this to your target directory - myshop folder sa cPanel
+          server-dir: /cp/pos-cp/  # Change this to your target directory - myshop folder sa cPanel
           exclude: |
             **/.git*
             **/.git*/**
