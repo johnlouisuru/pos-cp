@@ -1679,7 +1679,7 @@ if (!empty($_SESSION['cart'])) {
                 <div class="col-6">
                     <div class="logo">
                         <img src="../<?= $_ENV['BUSINESS_ICON'] ?>" height="30px" width="30px" alt="Icon" class="header-icon">
-                        <span style="color:#3d2d31">SAMARA</span>
+                        <span style="color:#3d2d31">CHILL PUFF!</span>
                     </div>
                 </div>
                 <div class="col-6 text-end text-dark">
