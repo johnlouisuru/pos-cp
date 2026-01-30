@@ -8,7 +8,11 @@ if (empty($_SESSION['cart'])) {
     header('Location: menu.php');
     exit;
 }
-
+// Debug: Check cart structure
+print_r("Cart keys in checkout: " . implode(', ', array_keys($_SESSION['cart'])));
+foreach ($_SESSION['cart'] as $key => $item) {
+    print_r("Key: '$key' => Product ID: " . ($item['product_id'] ?? 'Not set'));
+}
 // Process checkout
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $customerName = trim($_POST['customer_name'] ?? '');
@@ -39,7 +43,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Calculate totals for display
 $subtotal = 0;
-foreach ($_SESSION['cart'] as $item) {
+$cartItems = []; // Store formatted items for display
+
+foreach ($_SESSION['cart'] as $cartKey => $item):
+    // Extract product_id from item or cart key
+    if (isset($item['product_id'])) {
+        $productId = $item['product_id'];
+    } else {
+        // Try to extract from cart key
+        $parts = explode('_', $cartKey);
+        foreach ($parts as $part) {
+            if (is_numeric($part) && $part > 0) {
+                $productId = (int)$part;
+                break;
+            }
+        }
+    }
+    
+    // Store for display if needed
+    $cartItems[$cartKey] = $item;
+    
     $itemTotal = $item['price'] * $item['quantity'];
     
     // Add addons price
@@ -50,7 +73,8 @@ foreach ($_SESSION['cart'] as $item) {
     }
     
     $subtotal += $itemTotal;
-}
+endforeach;
+
 $tax = $subtotal * 0;
 $total = $subtotal + $tax;
 ?>
@@ -59,7 +83,7 @@ $total = $subtotal + $tax;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checkout - Restaurant Name</title>
+    <title>Checkout - Chill Puff</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -168,12 +192,12 @@ $total = $subtotal + $tax;
                         <h4 class="mb-4"><i class="fas fa-receipt"></i> Order Summary</h4>
                         
                         <div class="order-summary">
-                            <!-- In checkout.php, replace the order items display section -->
-<?php foreach ($_SESSION['cart'] as $productId => $item): ?>
+                            <!-- In the display section: -->
+<?php foreach ($_SESSION['cart'] as $cartKey => $item): ?>
 <div class="order-item">
     <div class="d-flex justify-content-between align-items-start">
         <div>
-            <h6 class="mb-1"><?php echo htmlspecialchars($item['name']); ?></h6>
+            <h6 class="mb-1"><?php echo htmlspecialchars($item['name'] ?? 'Unknown Item'); ?></h6>
             <p class="text-muted mb-1">
                 ₱<?php echo number_format($item['price'], 2); ?> × <?php echo $item['quantity']; ?>
                 <?php if (!empty($item['addons'])): ?>

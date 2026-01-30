@@ -270,6 +270,12 @@ function getNextOrderSequence() {
 /**
  * Create a new online order
  */
+/**
+ * Create a new online order
+ */
+/**
+ * Create a new online order
+ */
 function createOnlineOrder($cart, $customerName = '', $customerPhone = '') {
     global $pdo;
     
@@ -283,7 +289,7 @@ function createOnlineOrder($cart, $customerName = '', $customerPhone = '') {
         
         // Calculate totals
         $subtotal = 0;
-        foreach ($cart as $item) {
+        foreach ($cart as $cartKey => $item) {
             $subtotal += $item['price'] * $item['quantity'];
         }
         $tax = $subtotal * 0; // 12% tax
@@ -310,7 +316,34 @@ function createOnlineOrder($cart, $customerName = '', $customerPhone = '') {
         $orderId = $pdo->lastInsertId();
         
         // 2. Insert order items
-        foreach ($cart as $productId => $item) {
+        foreach ($cart as $cartKey => $item) {
+            // FIX: Get product_id from item array, NOT from cart key
+            $productId = 0;
+            
+            if (isset($item['product_id']) && is_numeric($item['product_id'])) {
+                $productId = (int)$item['product_id'];
+            } else {
+                // If not in item, extract from cart key (first part before __)
+                $parts = explode('__', $cartKey);
+                if (isset($parts[0]) && is_numeric($parts[0])) {
+                    $productId = (int)$parts[0];
+                } else {
+                    // Last resort: try any numeric part
+                    $allParts = preg_split('/[^0-9]+/', $cartKey);
+                    foreach ($allParts as $part) {
+                        if (is_numeric($part) && $part > 0) {
+                            $productId = (int)$part;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // Validate product_id
+            if ($productId <= 0) {
+                throw new Exception("Invalid product ID for item: " . ($item['name'] ?? 'Unknown'));
+            }
+            
             $itemSql = "
                 INSERT INTO order_items 
                 (order_id, product_id, quantity, unit_price, total_price, special_request)
@@ -321,7 +354,7 @@ function createOnlineOrder($cart, $customerName = '', $customerPhone = '') {
             $itemStmt = $pdo->prepare($itemSql);
             $itemStmt->execute([
                 $orderId,
-                $productId,
+                $productId,  // Now this is definitely an integer
                 $item['quantity'],
                 $item['price'],
                 $itemTotal,
@@ -339,10 +372,17 @@ function createOnlineOrder($cart, $customerName = '', $customerPhone = '') {
                         VALUES (?, ?, ?, ?)
                     ";
                     
+                    // Make sure addon_id is properly set
+                    $addonId = $addon['addon_id'] ?? $addon['id'] ?? 0;
+                    if (!is_numeric($addonId) || $addonId <= 0) {
+                        // Skip invalid addon
+                        continue;
+                    }
+                    
                     $addonStmt = $pdo->prepare($addonSql);
                     $addonStmt->execute([
                         $orderItemId,
-                        $addon['addon_id'],
+                        $addonId,
                         $addon['quantity'],
                         $addon['price'] ?? 0
                     ]);
@@ -350,7 +390,7 @@ function createOnlineOrder($cart, $customerName = '', $customerPhone = '') {
             }
         }
         
-        // 4. Create display entry (using estimated_time not estimated_minutes)
+        // 4. Create display entry
         $displayName = !empty($customerName) ? $customerName : 'Online Customer';
         $displaySql = "
             INSERT INTO order_display_status 
@@ -400,6 +440,8 @@ function createOnlineOrder($cart, $customerName = '', $customerPhone = '') {
         
     } catch (Exception $e) {
         $pdo->rollBack();
+        error_log("Order creation error: " . $e->getMessage());
+        
         return [
             'success' => false,
             'error' => $e->getMessage()
