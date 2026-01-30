@@ -9,10 +9,10 @@ if (empty($_SESSION['cart'])) {
     exit;
 }
 // Debug: Check cart structure
-print_r("Cart keys in checkout: " . implode(', ', array_keys($_SESSION['cart'])));
-foreach ($_SESSION['cart'] as $key => $item) {
-    print_r("Key: '$key' => Product ID: " . ($item['product_id'] ?? 'Not set'));
-}
+// print_r("Cart keys in checkout: " . implode(', ', array_keys($_SESSION['cart'])));
+// foreach ($_SESSION['cart'] as $key => $item) {
+//     print_r("Key: '$key' => Product ID: " . ($item['product_id'] ?? 'Not set'));
+// }
 // Process checkout
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $customerName = trim($_POST['customer_name'] ?? '');
