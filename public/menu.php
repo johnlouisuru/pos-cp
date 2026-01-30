@@ -1699,7 +1699,7 @@ if (!empty($_SESSION['cart'])) {
     <div class="container">
         <div class="carousel-header">
             <h3><i class="fas fa-fire me-2"></i>Best Sellers</h3>
-            <p>Our most popular items loved by customers</p>
+            <p>📍Bangad, Santa Maria in Front of FDS Gasoline Station</p>
         </div>
         
         <div class="bestseller-carousel" id="bestsellerCarousel">
